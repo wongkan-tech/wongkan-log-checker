@@ -1,13 +1,20 @@
 import re
 import os
 import zipfile
+import streamlit as st
+import pandas as pd
+
+# --- ตั้งค่าหน้าตาของโปรแกรม Streamlit ---
+st.set_page_config(page_title="Log Analyzer Pro", layout="wide")
+st.title("🔍 Log File & Text Analyzer (Streamlit Version)")
+st.write("ระบบวิเคราะห์ไฟล์ Log ตู้ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขคู่มืออัตโนมัติ")
 
 # --- 2. คลังคำค้นหาหลัก (search_keywords คำยาวขึ้นก่อนคำสั้น) ---
 search_keywords = [
     "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
     "SOLENOIDREJECT", "SOLENOIDRETACK", "SLOTPANELBAAC", "PRINTERBAAC",
     "POWERBAAC", "LONGKEYBAAC", "LCDREARBAAC", "CASSETTEBAAC", "REJECTBAAC",
-    "STACKGUIDE", "EPPBAAC", "LCDBAAC", "CCRBAAC", "SAFEBAAC", "UPSESSCO",
+    "STACKGUIDE", "EPPBAAC", "LCDBAAC", "CCRBAAC", "SAFEBAAC", "UPSESSCO","PAPER FAULT",
     "BATTERY", "NPLONG", "PCGSB", "IOBAAC", "NPSHORT", "PC572", "PC587",
     "STACK", "CHIP", "SSD", "CIS", "MTS", "EXSHUTTER",
     "FEEL DISTRIBUTION COMMAND FILE: REBOOT", "NETWORK DISCONNECTED", 
@@ -21,10 +28,78 @@ search_keywords = [
     "-14", "-12", "-13",
     r"\bNF\b", r"\bNT\b"  # บล็อกคำสั้นให้ค้นหาเป็นคำโดดๆ เท่านั้น ไม่มั่วไปโดน PRINTER
 ]
-
-# === [ส่วนนี้คือ manual_db ของคุณ ให้ปล่อยมันไว้เหมือนเดิม หรือก๊อปปี้ของเก่ามาวางต่อตรงนี้] ===
-
 manual_db = {
+        "10101": "ATMSNcontrol unit Parametererror Ignore None -> พารามิเตอร์ผิดพลาด (ระบบควบคุม ATM SN) ระบบให้ข้ามไปได้ ไม่ต้องดำเนินการใด ๆ",
+        "10102": "ATMSNcontrol unit NolegalATMsequence number WriteasATMserialnumber None -> ไม่พบหมายเลขลำดับ ATM ที่ถูกต้อง ระบบจะบันทึกเป็นหมายเลขซีเรียลของตู้ ATM แทน",
+        "10103": "ATMSNcontrol unit Failtooperatetheregistry Checktheoperationauthority None -> ไม่สามารถแก้ไขค่าใน Registry ได้ ให้ตรวจสอบสิทธิ์การเข้าถึงระบบ (Authority)",
+        "10104": "ATMSNcontrol unit DLL executionerror Checkthestatusofrelative module None -> การรันไฟล์ DLL ผิดพลาด ให้ตรวจสอบสถานะของโมดูลที่เกี่ยวข้อง",
+        "10105": "ATMSNcontrol unit Applicationprogramrunning error Re-sendthecommandorupdate software None -> โปรแกรมแอปพลิเคชันทำงานผิดพลาด ให้ลองส่งคำสั่งใหม่อีกครั้ง หรือทำการอัปเดตซอฟต์แวร์",
+        "12001": "GRG CDM cash dispenser Lowlevel Statusprompt,ignore -> ระดับธนบัตรในกล่องต่ำ (แจ้งเตือนสถานะทั่วไป) ระบบให้ข้ามไปได้ ไม่ต้องดำเนินการใด ๆ",
+        "12002": "GRG CDM cash dispenser Note is retracted when cleaningtransport Statusprompt,ignore -> ธนบัตรถูกดึงกลับขณะที่ระบบกำลังเคลียร์สายพานลำเลียง (แจ้งเตือนสถานะ) ระบบให้ข้ามไปได้",
+        "12003": "GRG CDM cash dispenser Note is sent out when cleaningtransport Warningcode,pleasecheckthe account 1001 -> พบธนบัตรถูกจ่ายออกไปขณะระบบกำลังเคลียร์สายพานลำเลียง (Code เตือน) ให้รีบตรวจสอบบัญชีและยอดเงินทันที",
+        "12004": "GRG CDM cash dispenser Note recycled during note dispensing Warningcode,ignore None -> ธนบัตรถูกดึงกลับเข้ากล่อง Recycle ระหว่างขั้นตอนจ่ายเงิน (Code เตือน) ระบบให้ข้ามไปได้",
+        "12005": "GRG CDM cash dispenser Internal machine is severe dirty Warning code, clean the machine None -> ภายในตัวเครื่องสกปรกมาก (Code เตือน) ให้ทำความสะอาดอุปกรณ์และตัวเครื่องภายใน",
+        "12006": "GRG CDM cash dispenser Nonoteatexitslot Warningcode,ignore 100b -> ไม่พบธนบัตรที่ช่องทางออก (Code เตือน) ระบบให้ข้ามไปได้ ไม่ต้องดำเนินการใด ๆ",
+        "12007": "GRG CDM cash dispenser Log data returned is incomplete Warningcode,rereadthelog 1003 -> ข้อมูล Log ที่ส่งกลับมาไม่สมบูรณ์ (Code เตือน) ให้สั่งอ่านค่า Log จากระบบใหม่อีกครั้ง",
+        "12008": "GRG CDM cash dispenser Logdatareadingisdone Warningcode,ignore 1004 -> ระบบทำการอ่านข้อมูล Log เสร็จสิ้นแล้ว (Code เตือน) ระบบให้ข้ามไปได้",
+        "12009": "GRG CDM cash dispenser Logdataempty Warningcode,ignore 1005 -> ข้อมูล Log ว่างเปล่า ไม่มีข้อมูลบันทึกไว้ (Code เตือน) ระบบให้ข้ามไปได้",
+        "12010": "GRG CDM cash dispenser FCS1sensordirty Warningcode,cleantheFCS1 101f -> เซนเซอร์ FCS1 สกปรก (Code เตือน) ให้ทำความสะอาดเซนเซอร์ FCS1",
+        "12011": "GRG CDM cash dispenser FCS2sensordirty Warningcode,cleantheFCS2 1020 -> เซนเซอร์ FCS2 สกปรก (Code เตือน) ให้ทำความสะอาดเซนเซอร์ FCS2",
+        "12012": "GRG CDM cash dispenser FCS3sensordirty Warningcode,cleantheFCS3 1021 -> เซนเซอร์ FCS3 สกปรก (Code เตือน) ให้ทำความสะอาดเซนเซอร์ FCS3",
+        "12013": "GRG CDM cash dispenser FCS4sensordirty Warningcode,cleantheFCS4 1022 -> เซนเซอร์ FCS4 สกปรก (Code เตือน) ให้ทำความสะอาดเซนเซอร์ FCS4",
+        "12014": "GRG CDM cash dispenser FCS5sensordirty Warningcode,cleantheFCS5 1023 -> เซนเซอร์ FCS5 สกปรก (Code เตือน) ให้ทำความสะอาดเซนเซอร์ FCS5",
+        "12015": "GRG CDM cash dispenser FCS6sensordirty Warningcode,cleantheFCS6 1024 -> เซนเซอร์ FCS6 สกปรก (Code เตือน) ให้ทำความสะอาดเซนเซอร์ FCS6",
+        "12016": "GRG CDM cash dispenser SLLSsensordirty Warningcode,cleantheSLLS 1025 -> เซนเซอร์ SLLS สกปรก (Code เตือน) ให้ทำความสะอาดเซนเซอร์ SLLS",
+        "12017": "GRG CDM cash dispenser MEDSsensordirty Warningcode,cleantheMEDS 1026 -> เซนเซอร์ MEDS สกปรก (Code เตือน) ให้ทำความสะอาดเซนเซอร์ MEDS",
+        "12018": "GRG CDM cash dispenser RFSsensordirty Warningcode,cleantheRFS 1027 -> เซนเซอร์ RFS สกปรก (Code เตือน) ให้ทำความสะอาดเซนเซอร์ RFS",
+        "12019": "GRG CDM cash dispenser TESsensordirty Warningcode,cleantheTES 1028 -> เซนเซอร์ TES สกปรก (Code เตือน) ให้ทำความสะอาดเซนเซอร์ TES",
+        "12020": "GRG CDM cash dispenser No note at SCS when dispensingnotes Warning code, check if there arenotesinthestackerarea 1008 -> ไม่พบธนบัตรที่เซนเซอร์ SCS ขณะจ่ายเงิน (Code เตือน) ให้ตรวจเช็คว่ามีธนบัตรค้างในช่อง Stacker หรือไม่",
+        "12030": "GRG CDM cash dispenser Otherwarningcode Warningcode,ignore None -> Code เตือนอื่น ๆ ระบบให้ข้ามไปได้ ไม่ต้องดำเนินการใด ๆ",
+        "12041": "GRG CDM cash dispenser Specified exit slot non-existence Check the parameter correctness None -> ไม่พบช่องทางออกของธนบัตรที่ระบุ ให้ตรวจสอบการตั้งค่า Parameter ให้ถูกต้อง",
+        "12042": "GRG CDM cash dispenser Specified cashbox cannot be used Check if cashbox hardware fault None -> กล่องเงินที่ระบุไม่สามารถใช้งานได้ ให้ตรวจสอบความเสียหายทางฮาร์ดแวร์ของกล่องเงิน",
+        "12043": "GRG CDM cash dispenser Cashboxinfoischanged Checkifthecashboxisreplaced andinitializeit None -> ข้อมูลกล่องเงินมีการเปลี่ยนแปลง ตรวจสอบว่ามีการเปลี่ยนกล่องเงินใหม่หรือไม่ และให้สั่ง Initialize ระบบ",
+        "12044": "GRG CDM cash dispenser Cashboxempty Replenishnotes None -> กล่องเงินหมด ให้เติมธนบัตรเข้ากล่อง",
+        "12045": "GRG CDM cash dispenser Beyondmaximumwithdrawal amount Checkifthewithdrawalamount isbeyondthemaximumone 6c02 -> จ่ายเงินเกินจำนวนสูงสุดที่กำหนด ตรวจสอบว่ายอดถอนเงินเกินลิมิตของตู้หรือไม่",
+        "12046": "GRG CDM cash dispenser Cashboxlackofconfiguration information Check and add the configurationinformation None -> กล่องเงินขาดข้อมูลการตั้งค่า (Configuration) ให้ตรวจสอบและเพิ่มข้อมูลให้ครบถ้วน",
+        "12047": "GRG CDM cash dispenser Specified exit slot cannot be used Check the parameter correctness None -> ช่องทางออกของธนบัตรที่ระบุใช้งานไม่ได้ ให้ตรวจสอบการตั้งค่า Parameter",
+        "12048": "GRG CDM cash dispenser Dispensing successful, but notelost Check if thesensorsof stacker shutterfault None -> จ่ายเงินสำเร็จแต่ธนบัตรสูญหายระหว่างทาง ตรวจสอบเซนเซอร์ของชุด Shutter ตรง Stacker ว่าขัดข้องหรือไม่",
+        "12049": "GRG CDM cash dispenser CashboxeswithsameID EnsuretheinputtedcashboxID isnotthesame 6d03 -> พบกล่องเงินที่มีรหัส ID ซ้ำกัน ตรวจสอบและแก้ไขไม่ให้ ID กล่องเงินซ้ำกัน",
+        "12050": "GRG CDM cash dispenser Cashboxcannotbeused Please check and repair the cashboxintime None -> กล่องเงินไม่สามารถใช้งานได้ ตรวจสอบและซ่อมแซมกล่องเงินทันที",
+        "12051": "GRG CDM cash dispenser 1stcashboxempty Replenishnotes 6103 -> กล่องเงินใบที่ 1 หมด ให้ทำการเติมธนบัตร",
+        "12052": "GRG CDM cash dispenser 2ndcashboxempty Replenishnotes 6203 -> กล่องเงินใบที่ 2 หมด ให้ทำการเติมธนบัตร",
+        "12053": "GRG CDM cash dispenser 3rdcashboxempty Replenishnotes 6303 -> กล่องเงินใบที่ 3 หมด ให้ทำการเติมธนบัตร",
+        "12054": "GRG CDM cash dispenser 4thcashboxempty Replenishnotes 6403 -> กล่องเงินใบที่ 4 หมด ให้ทำการเติมธนบัตร",
+        "12055": "GRG CDM cash dispenser 5thcashboxempty Replenishnotes 6503 -> กล่องเงินใบที่ 5 หมด ให้ทำการเติมธนบัตร",
+        "12056": "GRG CDM cash dispenser 6thcashboxempty Replenishnotes 6603 -> กล่องเงินใบที่ 6 หมด ให้ทำการเติมธนบัตร",
+        "12057": "GRG CDM cash dispenser No1stcashbox Insertthecashboxproperly 6101 -> ไม่พบกล่องเงินใบที่ 1 ให้ใส่กล่องเงินให้ถูกต้องและเข้าล็อก",
+        "12058": "GRG CDM cash dispenser No2ndcashbox Insertthecashboxproperly 6201 -> ไม่พบกล่องเงินใบที่ 2 ให้ใส่กล่องเงินให้ถูกต้องและเข้าล็อก",
+        "12059": "GRG CDM cash dispenser No3rdcashbox Insertthecashboxproperly 6301 -> ให้ใส่กล่องเงินใบที่ 3 ให้ถูกต้องและเข้าล็อก",
+        "12060": "GRG CDM cash dispenser No4thcashbox Insertthecashboxproperly 6401 -> ให้ใส่กล่องเงินใบที่ 4 ให้ถูกต้องและเข้าล็อก",
+        "12061": "GRG CDM cash dispenser No5thcashbox Insertthecashboxproperly 6501 -> ให้ใส่กล่องเงินใบที่ 5 ให้ถูกต้องและเข้าล็อก",
+        "12062": "GRG CDM cash dispenser No6thcashbox Insertthecashboxproperly 6601 -> ให้ใส่กล่องเงินใบที่ 6 ให้ถูกต้องและเข้าล็อก",
+        "12063": "GRG CDM cash dispenser 1stcashboxfeedingfailure Checkthecashboxinstallationstateandensureitisinposition 6102 -> กล่องเงินใบที่ 1 จ่ายแบงก์ผิดพลาด เช็คการติดตั้งกล่องเงินให้อยู่ในตำแหน่งที่ถูกต้อง",
+        "12064": "GRG CDM cash dispenser 2ndcashboxfeedingfailure Checkthecashboxinstallationstateandensureitisinposition 6202 -> กล่องเงินใบที่ 2 จ่ายแบงก์ผิดพลาด เช็คการติดตั้งกล่องเงินให้อยู่ในตำแหน่งที่ถูกต้อง",
+        "12065": "GRG CDM cash dispenser 3rdcashboxfeedingfailure Checkthecashboxinstallationstateandensureitisinposition 6302 -> กล่องเงินใบที่ 3 จ่ายแบงก์ผิดพลาด เช็คการติดตั้งกล่องเงินให้อยู่ในตำแหน่งที่ถูกต้อง",
+        "12066": "GRG CDM cash dispenser 4thcashboxfeedingfailure Checkthecashboxinstallationstateandensureitisinposition 6402 -> กล่องเงินใบที่ 4 จ่ายแบงก์ผิดพลาด เช็คการติดตั้งกล่องเงินให้อยู่ในตำแหน่งที่ถูกต้อง",
+        "12067": "GRG CDM cash dispenser 5thcashboxfeedingfailure Checkthecashboxinstallationstateandensureitisinposition 6502 -> กล่องเงินใบที่ 5 จ่ายแบงก์ผิดพลาด เช็คการติดตั้งกล่องเงินให้อยู่ในตำแหน่งที่ถูกต้อง",
+        "12068": "GRG CDM cash dispenser 6thcashboxfeedingfailure Checkthecashboxinstallationstateandensureitisinposition 6602 -> กล่องเงินใบที่ 6 จ่ายแบงก์ผิดพลาด เช็คการติดตั้งกล่องเงินให้อยู่ในตำแหน่งที่ถูกต้อง",
+        "12069": "GRG CDM cash dispenser 1stcashboxIDillegal CheckthevalidityofIDsetup 6104 -> รหัส ID กล่องเงินใบที่ 1 ไม่ถูกต้อง ตรวจสอบการตั้งค่า ID ของกล่องเงิน",
+        "12070": "GRG CDM cash dispenser 2ndcashboxIDillegal CheckthevalidityofIDsetup 6204 -> รหัส ID กล่องเงินใบที่ 2 ไม่ถูกต้อง ตรวจสอบการตั้งค่า ID ของกล่องเงิน",
+        "12071": "GRG CDM cash dispenser 3rdcashboxIDillegal CheckthevalidityofIDsetup 6304 -> รหัส ID กล่องเงินใบที่ 3 ไม่ถูกต้อง ตรวจสอบการตั้งค่า ID ของกล่องเงิน",
+        "12072": "GRG CDM cash dispenser 4thcashboxIDillegal CheckthevalidityofIDsetup 6404 -> รหัส ID กล่องเงินใบที่ 4 ไม่ถูกต้อง ตรวจสอบการตั้งค่า ID ของกล่องเงิน",
+        "12073": "GRG CDM cash dispenser 5thcashboxIDillegal CheckthevalidityofIDsetup 6504 -> รหัส ID กล่องเงินใบที่ 5 ไม่ถูกต้อง ตรวจสอบการตั้งค่า ID ของกล่องเงิน",
+        "12074": "GRG CDM cash dispenser 6thcashboxIDillegal CheckthevalidityofIDsetup 6604 -> รหัส ID กล่องเงินใบที่ 6 ไม่ถูกต้อง ตรวจสอบการตั้งค่า ID ของกล่องเงิน",
+        "12075": "GRG CDM cash dispenser Recycleboxnon-existence Check if the recycle box is in position 6701 -> ไม่พบกล่อง Recycle ตรวจสอบว่ากล่องใส่เข้าตำแหน่งดีหรือยัง",
+        "12076": "GRG CDM cash dispenser Recycleboxfull Cleantherecyclebox 6702/6703 -> กล่อง Recycle เต็ม ให้เคลียร์และนำธนบัตรออกจากกล่อง",
+        "12077": "GRG CDM cash dispenser Feedingtimeout Checkthenotefeeder 6801 -> จ่ายธนบัตรเกินเวลาที่กำหนด (Timeout) ให้ตรวจสอบชุด Notefeeder",
+        "12078": "GRG CDM cash dispenser The distance of notes is too shortduringtransporting Checkthenotefeeder 6802 -> ระยะห่างระหว่างธนบัตรชิดกันเกินไปขณะส่ง ตรวจสอบชุด Notefeeder",
+        "12079": "GRG CDM cash dispenser Toomanynotesarerecycled 1.Checkthenotesizeandquality 2.Checkthenoteparametersetup 3.Checkthenotefeeder 6803 -> มีธนบัตรถูกดึงกลับเข้ากล่องมากเกินไป เช็คขนาด/คุณภาพแบงก์, การตั้งค่า Parameter และ Notefeeder",
+        "12080": "GRG CDM cash dispenser Thicknesssensorfault Checkifthesensorassemblyisinstalledandadjustedproperly 6d01 -> เซนเซอร์วัดความหนาธนบัตรขัดข้อง ตรวจสอบการติดตั้งและการปรับแต่งชุดเซนเซอร์",
+        "12081": "GRG CDM cash dispenser Single diverter down-repositionfailure Checkandrepairthesinglediverterandrelatedparts 6805 -> แผ่นกั้นแยกธนบัตรเดี่ยว (Single diverter) ไม่คืนตำแหน่งด้านล่าง เช็คและซ่อมแซมแผ่นกั้นและชิ้นส่วนที่เกี่ยวข้อง",
+        "12082": "GRG CDM cash dispenser Single diverter up-reposition failure Checkandrepairthesinglediverterandrelatedparts 6806 -> แผ่นกั้นแยกธนบัตรเดี่ยว (Single diverter) ไม่คืนตำแหน่งด้านบน เช็คและซ่อมแซมแผ่นกั้นและชิ้นส่วนที่เกี่ยวข้อง",
+        "12083": "GRG CDM cash dispenser Bundle diverter down-restorationfailure Checkandrepairthesinglediverterandrelatedparts 6809 -> แผ่นกั้นแยกมัดธนบัตร (Bundle diverter) ไม่คืนตำแหน่งด้านล่าง เช็คและซ่อมแซมชุดแผ่นกั้น",
+        "12084": "GRG CDM cash dispenser Bundlediverterup-restoration failure Checkandrepairthesinglediverterandrelatedparts 680a -> แผ่นกั้นแยกมัดธนบัตร (Bundle diverter) ไม่คืนตำแหน่งด้านบน เช็คและซ่อมแซมชุดแผ่นกั้น",
+        "12085": "GRG CDM cash dispenser Note is tobe sent outwhen cleaningtransport Inspectthenoteandchecktheaccountimmediately -> พบธนบัตรค้างที่ชุดสายพานลำเลียงขณะกำลังเคลียร์ระบบ ให้ตรวจเช็คธนบัตรและตรวจสอบบัญชีทันที",
         "12086": "Mainmotorisjammed->เช็คCDS sensor เช็คเงินติดNFและNT",
         "12087": "Note jam at FCS1->ให้เปิดตู้เคลียร์ธนบัตรออก เช็คและทำความสะอาด Roller NF1 sensor FCS1",
         "12088": "Note jam between FCS1 and SLLS->เช็ค NF1 และ กล่องเงิน100",
@@ -3394,18 +3469,32 @@ manual_db = {
         "MTS": "502014576-GA EDDY CURRENT THICKNESS ASSY, 301010902-GA MTS CONTROL BOARD",
         "STACKGUIDE": "603010310001-GA STACKING GUIDE ROLLER FIXING FRAMEASSY",
         "CHIP": "502019975 CONTACT ASSY CRT-350N หัวชิบการ์ด",
-        }
-recovery_counter = 0
+        "PAPER FAULT": "USB communication error ErrCode 1375"
+		}
+# --- ฟังก์ชันจัดการวิเคราะห์บรรทัด Log (ฟังก์ชันเดิมของคุณ ปรับปรุงระบบเก็บตัวแปรนับจำนวน) ---
 def process_log_line(line):
     line_upper = line.upper()
-    global recovery_counter
+    
+    # 1. ตรวจจับเรื่องกระดาษติด (PAPER FAULT / FAULT)
+    if "PAPER FAULT" in line_upper or "FAULT" in line_upper:
+        return {
+            "time": "Unknown-Time",
+            "reason": "PAPER FAULT",
+            "line": line.strip(),
+            "solution": "USB communication error ErrCode 1375"
+        }, None
+           
+    # 2. ตรวจจับเรื่อง RECOVERY FAIL
     if "RECOVERY FAIL" in line_upper:
-        recovery_counter += 1
-        return None
+        return None, "recovery_fail"
+
+    # 3. ตรวจจับเรื่อง MAXIMUM RETRACT FAIL
+    if "MAXIMUM RETRACT FAIL" in line_upper:
+        return None, "retract_fail"
     
     # ระบบคัดกรองคำมั่วและข้อมูลหน้าสลิปที่ไม่จำเป็นออกไปแบบรวบยอด
     if any(keyword in line_upper for keyword in ["BILL", "REF", "CARD", "PRINTER", "RECEIPT", "TERMINAL", "OPCODE", "AMOUNT", "SEQUENCE", "S0_I", "1000A", "1000B", "00100", "00500"]):
-        return None
+        return None, None
         
     is_matched = False
     detected_reason = ""
@@ -3456,7 +3545,7 @@ def process_log_line(line):
 
         if not is_matched:
             for num_group in all_digit_groups:
-                if len(num_group) in [4, 5] :
+                if len(num_group) in [4, 5]:
                     if num_group in manual_db:
                         is_matched = True
                         detected_reason = f"Error Code {num_group}"
@@ -3469,79 +3558,132 @@ def process_log_line(line):
             "line": line.strip(),
             "reason": detected_reason,
             "solution": solution_text
-        }
-    return None
+        }, None
+        
+    return None, None
 
-# --- ส่วนควบคุมหน้าจอรับข้อมูลผ่าน Terminal ---
-while True:
-    print("\n" + "="*60)
-    print("👉 [วิธีที่ 1] ลากไฟล์ .txt หรือ .zip มาวางหน้านี้ แล้วกด Enter")
-    print("👉 [วิธีที่ 2] พิมพ์คำค้นหา เช่น NT, NF, 12087 หรือข้อความ Log เพื่อวิเคราะห์")
-    print("="*60)
+# --- ฟังก์ชันตัวช่วยวนลูปเนื้อหา Log เพื่อรวบรวมสถิติและผลลัพธ์ ---
+def analyze_log_content(log_content, filename="File"):
+    found_count = 0
+    recovery_counter = 0
+    retract_fail_counter = 0
+    results_list = []
     
-    user_input = input("วางข้อมูลตรงนี้: ").strip()
-    if not user_input:
-        continue
+    for line in log_content.splitlines():
+        if "MAXIMUM RETRACT FAIL TIMES" in line:
+            retract_fail_counter += 1
+            
+        res, event_type = process_log_line(line)
         
-    print("\n[SYSTEM]: Processing input data...")
-    print("="*25 + " RESULT " + "="*25)
+        if event_type == "recovery_fail":
+            recovery_counter += 1
+        elif res:
+            found_count += 1
+            res["filename"] = filename
+            results_list.append(res)
+            
+    return results_list, recovery_counter, retract_fail_counter, found_count
 
-    clean_path = user_input.strip('"\'')
-    if os.path.exists(clean_path):
+# === แบ่งหน้าต่างการทำงาน Streamlit เป็น 2 วิธีตามแบบฟอร์มเดิม ===
+tab1, tab2 = st.tabs(["📁 [วิธีที่ 1] อัปโหลดไฟล์ Log (.txt / .zip)", "✍️ [วิธีที่ 2] พิมพ์คำค้นหาเดี่ยว หรือพิมพ์ Log"])
+
+# --- [วิธีที่ 1] จัดการผ่านหน้าต่างอัปโหลดไฟล์ ---
+with tab1:
+    uploaded_file = st.file_uploader("ลากไฟล์ .txt, .log, .data, .t หรือไฟล์ .zip มาวางตรงนี้", type=["txt", "log", "data", "t", "zip"])
+    
+    if uploaded_file is not None:
         log_content = ""
-        if clean_path.lower().endswith('.zip'):
-            try:
-                with zipfile.ZipFile(clean_path, 'r') as zip_ref:
-                    for member in zip_ref.namelist():
-                        if member.lower().endswith(('.txt', '.log', '.data', '.t')):
-                            with zip_ref.open(member) as f:
-                                log_content += f.read().decode('utf-8', errors='ignore') + "\n"
-            except Exception as e:
-                print(f"❌ ไม่สามารถอ่านไฟล์ Zip ได้: {e}")
-        else:
-            try:
-                with open(clean_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    log_content = f.read()
-            except Exception as e:
-                print(f"❌ ไม่สามารถอ่านไฟล์ข้อมูลได้: {e}")
-
-        if log_content:
-            found_count = 0
-            for line in log_content.splitlines():
-                res = process_log_line(line)
-                if res:
-                    found_count += 1
-                    print(f"⏰ TIMESTAMP   : {res['time']}")
-                    print(f"🗂️ MATCHED TRIGGER: {res['reason']}")
-                    print(f"📝 DETAIL LINE    : {res['line']}")
-                    print(f"💡 RECOMMENDED   : {res['solution']}")
-                    print("-"*50)
-            print(f"\n📌 ตรวจพบเหตุการณ์ RECOVERY FAIL ในไฟล์นี้ทั้งหมด: {recovery_counter} ครั้ง")
-        print(f"\n✨ วิเคราะห์ไฟล์เสร็จสิ้น ตรวจพบเหตุการณ์ทั้งหมด {found_count} รายการ")
-
-    else:
-        user_input_upper = user_input.upper()
+        all_results = []
         
-        # ค้นหาแบบตรงตัวจากคำสั้นก่อนเพื่อความแม่นยำ
-        if user_input_upper in ["NT", "NF"]:
-            if user_input_upper in manual_db:
-                print(f"🗂️ MATCHED TRIGGER: {user_input_upper}")
-                print(f"💡 RECOMMENDED   : {manual_db[user_input_upper]}")
-            else:
-                print(f"🗂️ MATCHED TRIGGER: {user_input_upper}")
-                print("💡 RECOMMENDED   : Found keyword but no description in DB.")
-        else:
-            # ตรวจสอบประโยคหรือคำยาวๆ
-            res = process_log_line(user_input)
-            if res:
-                print(f"⏰ TIMESTAMP   : {res['time']}")
-                print(f"🗂️ MATCHED TRIGGER: {res['reason']}")
-                print(f"💡 RECOMMENDED   : {res['solution']}")
-            else:
-                if user_input_upper in manual_db:
-                    print(f"🗂️ MATCHED TRIGGER: {user_input_upper}")
-                    print(f"💡 RECOMMENDED   : {manual_db[user_input_upper]}")
-                else:
-                    print("❌ ไม่พบข้อมูลรหัสความผิดพลาดหรือข้อความตรงตามเงื่อนไข (ระบบกรองคำมั่วออกให้แล้ว)")
+        total_recovery = 0
+        total_retract_fail = 0
+        total_found = 0
+        
+        # จัดการแตกไฟล์กรณีเป็นไฟล์ .zip
+        if uploaded_file.name.lower().endswith('.zip'):
+            try:
+                with zipfile.ZipFile(uploaded_file, 'r') as zip_ref:
+                    for member in zip_ref.namelist():
+                        if member.lower().endswith(('.txt', '.log', '.data', '.t')) and not member.startswith('__MACOSX'):
+                            with zip_ref.open(member) as f:
+                                file_text = f.read().decode('utf-8', errors='ignore')
+                                res_list, rec, ret, f_cnt = analyze_log_content(file_text, member)
+                                all_results.extend(res_list)
+                                total_recovery += rec
+                                total_retract_fail += ret
+                                total_found += f_cnt
+                st.success("🎉 แตกไฟล์และวิเคราะห์ไฟล์ Zip สำเร็จ!")
+            except Exception as e:
+                st.error(f"❌ ไม่สามารถอ่านไฟล์ Zip ได้: {e}")
                 
-    print("\n✨ Round finished! Ready for the next log.")
+        # จัดการกรณีเป็นไฟล์ข้อความเดี่ยวๆ (.txt, .log, .data, .t)
+        else:
+            try:
+                log_content = uploaded_file.read().decode('utf-8', errors='ignore')
+                all_results, total_recovery, total_retract_fail, total_found = analyze_log_content(log_content, uploaded_file.name)
+                st.success("🎉 วิเคราะห์ไฟล์ข้อความสำเร็จ!")
+            except Exception as e:
+                st.error(f"❌ ไม่สามารถอ่านไฟล์ข้อมูลได้: {e}")
+
+        # --- ส่วนแสดงผล Dashboard สรุปจำนวนตัวนับ (Counter Cards) ---
+        st.markdown("### 📊 สรุปผลการตรวจสอบสถิติ")
+        metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
+        metrics_col1.metric("📌 ตรวจพบ RECOVERY FAIL", f"{total_recovery} ครั้ง")
+        metrics_col2.metric("❌ ตรวจพบ MAXIMUM RETRACT FAIL TIMES", f"{total_retract_fail} ครั้ง")
+        metrics_col3.metric("✨ พบเหตุการณ์ทริกเกอร์ทั้งหมด", f"{total_found} รายการ")
+        
+        # --- ตารางแสดงรายงานความผิดพลาดที่ตรวจพบ ---
+        if all_results:
+            st.markdown("### 📝 รายละเอียด Log ที่ตรงกับเงื่อนไข")
+            df = pd.DataFrame(all_results)
+            df = df[["time", "filename", "reason", "line", "solution"]]
+            df.columns = ["⏰ TIMESTAMP", "🗂️ FILE NAME", "🎯 TRIGGER", "📝 DETAIL LINE", "💡 RECOMMENDED"]
+            
+            st.dataframe(df, use_container_width=True)
+            
+            # ระบบปุ่มกดดาวน์โหลดไฟล์ผลลัพธ์รายงานออกมาใช้งาน
+            csv_data = df.to_csv(index=False).encode('utf-8-sig')
+            st.download_button(
+                label="📥 ดาวน์โหลดรายงานผลลัพธ์เป็นไฟล์ CSV",
+                data=csv_data,
+                file_name="log_analysis_report.csv",
+                mime="text/csv"
+            )
+        else:
+            st.info("ไม่พบข้อมูล Log ใดๆ ที่ตรงตามเงื่อนไขการค้นหาในคลังคำศัพท์")
+
+# --- [วิธีที่ 2] จัดการผ่านการพิมพ์ค้นหาโดยตรง (Manual Input) ---
+with tab2:
+    user_input = st.text_input("กรอกรหัสความผิดพลาด, คำสำคัญ (เช่น NT, NF, 12087) หรือวางประโยค Log ตรงนี้:", key="manual_search").strip()
+    
+    if st.button("🚀 เริ่มวิเคราะห์ข้อมูล"):
+        if user_input:
+            user_input_upper = user_input.upper()
+            st.markdown("### 📦 ผลการวิเคราะห์")
+            
+            # เคสคำสั้นพิเศษแบบตรงตัวเพื่อความแม่นยำสูง
+            if user_input_upper in ["NT", "NF"]:
+                if user_input_upper in manual_db:
+                    st.success(f"🎯 **MATCHED TRIGGER**: {user_input_upper}")
+                    st.info(f"💡 **RECOMMENDED**: {manual_db[user_input_upper]}")
+                else:
+                    st.success(f"🎯 **MATCHED TRIGGER**: {user_input_upper}")
+                    st.warning("💡 **RECOMMENDED**: Found keyword but no description in DB.")
+            else:
+                # ตรวจสอบภาพรวมผ่านกระบวนการหลัก
+                res, _ = process_log_line(user_input)
+                if res:
+                    st.success(f"⏰ **TIMESTAMP**: {res['time']}")
+                    st.info(f"🎯 **MATCHED TRIGGER**: {res['reason']}")
+                    st.code(res['line'], language="text")
+                    st.warning(f"💡 **RECOMMENDED**: {res['solution']}")
+                else:
+                    if user_input_upper in manual_db:
+                        st.success(f"🎯 **MATCHED TRIGGER**: {user_input_upper}")
+                        st.info(f"💡 **RECOMMENDED**: {manual_db[user_input_upper]}")
+                    else:
+                        st.error("❌ ไม่พบข้อมูลรหัสความผิดพลาดหรือข้อความตรงตามเงื่อนไข (ระบบกรองคำมั่วออกให้แล้ว)")
+        else:
+            st.warning("กรุณาใส่ข้อความหรือคำค้นหาก่อนทำการกดปุ่ม")
+
+
