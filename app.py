@@ -9,12 +9,12 @@ st.set_page_config(page_title="Log Analyzer Pro", layout="wide")
 st.title("🔍 Log File & Text Analyzer (Streamlit Version)")
 st.write("ระบบวิเคราะห์ไฟล์ Log ตู้ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขคู่มืออัตโนมัติ")
 
-# --- 2. คลังคำค้นหาหลัก (search_keywords คำยาวขึ้นก่อนคำสั้น) ---
+# --- คลังคำค้นหาหลัก (search_keywords คำยาวขึ้นก่อนคำสั้น) ---
 search_keywords = [
     "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
     "SOLENOIDREJECT", "SOLENOIDRETACK", "SLOTPANELBAAC", "PRINTERBAAC",
     "POWERBAAC", "LONGKEYBAAC", "LCDREARBAAC", "CASSETTEBAAC", "REJECTBAAC",
-    "STACKGUIDE", "EPPBAAC", "LCDBAAC", "CCRBAAC", "SAFEBAAC", "UPSESSCO","PAPER FAULT",
+    "STACKGUIDE", "EPPBAAC", "LCDBAAC", "CCRBAAC", "SAFEBAAC", "UPSESSCO", "PAPER FAULT",
     "BATTERY", "NPLONG", "PCGSB", "IOBAAC", "NPSHORT", "PC572", "PC587",
     "STACK", "CHIP", "SSD", "CIS", "MTS", "EXSHUTTER",
     "FEEL DISTRIBUTION COMMAND FILE: REBOOT", "NETWORK DISCONNECTED", 
@@ -26,8 +26,16 @@ search_keywords = [
     "CARD RETAINED", "CARD RETAIN", "OTHER REASON", "RETRACT FLAG", 
     "TIME OUT", "ALARM IS ON", "ERROR", "ERR", "FAILED", "FAIL", "FAULT", 
     "-14", "-12", "-13",
-    r"\bNF\b", r"\bNT\b"  # บล็อกคำสั้นให้ค้นหาเป็นคำโดดๆ เท่านั้น ไม่มั่วไปโดน PRINTER
+    r"\bNF\b", r"\bNT\b"
 ]
+
+# --- ตัวแปรสแกนเงื่อนไขพิเศษ (Error & Code Detector) ---
+ERROR_KEYWORDS = ["ERROR", "ERR", "FAILED", "FAIL", "FAULT", "PAPER FAULT"]
+
+# 🎯 ปรับโครงสร้างเพื่อดักจับโค้ดตัวเลขทุกรูปแบบ (เช่น 12054, -302, 302) แม้ติดเครื่องหมายพิเศษ
+CODE_PATTERN = re.compile(r'-?\d{3,5}')
+
+
 manual_db = {
         "10101": "ATMSNcontrol unit Parametererror Ignore None -> พารามิเตอร์ผิดพลาด (ระบบควบคุม ATM SN) ระบบให้ข้ามไปได้ ไม่ต้องดำเนินการใด ๆ",
         "10102": "ATMSNcontrol unit NolegalATMsequence number WriteasATMserialnumber None -> ไม่พบหมายเลขลำดับ ATM ที่ถูกต้อง ระบบจะบันทึกเป็นหมายเลขซีเรียลของตู้ ATM แทน",
@@ -3471,11 +3479,14 @@ manual_db = {
         "CHIP": "502019975 CONTACT ASSY CRT-350N หัวชิบการ์ด",
         "PAPER FAULT": "USB communication error ErrCode 1375"
 		}
-# --- ฟังก์ชันจัดการวิเคราะห์บรรทัด Log (ฟังก์ชันเดิมของคุณ ปรับปรุงระบบเก็บตัวแปรนับจำนวน) ---
+# =========================================================================
+# --- [ส่วนที่ 3: ระบบประมวลผลดั้งเดิม ปรับปรุงฟังก์ชันตรวจจับโค้ดข้ามเวลาตัวเก่งล่าสุด] ---
+# =========================================================================
+
 def process_log_line(line):
     line_upper = line.upper()
     
-    # 1. ตรวจจับเรื่องกระดาษติด (PAPER FAULT / FAULT)
+    # 1. ตรวจจับเรื่องกระดาษติด (PAPER FAULT / FAULT) ของเดิมของคุณเป๊ะๆ
     if "PAPER FAULT" in line_upper or "FAULT" in line_upper:
         return {
             "time": "Unknown-Time",
@@ -3484,15 +3495,15 @@ def process_log_line(line):
             "solution": "USB communication error ErrCode 1375"
         }, None
            
-    # 2. ตรวจจับเรื่อง RECOVERY FAIL
+    # 2. ตรวจจับเรื่อง RECOVERY FAIL ของเดิมของคุณเป๊ะๆ
     if "RECOVERY FAIL" in line_upper:
         return None, "recovery_fail"
 
-    # 3. ตรวจจับเรื่อง MAXIMUM RETRACT FAIL
+    # 3. ตรวจจับเรื่อง MAXIMUM RETRACT FAIL ของเดิมของคุณเป๊ะๆ
     if "MAXIMUM RETRACT FAIL" in line_upper:
         return None, "retract_fail"
     
-    # ระบบคัดกรองคำมั่วและข้อมูลหน้าสลิปที่ไม่จำเป็นออกไปแบบรวบยอด
+    # ระบบคัดกรองคำมั่วและข้อมูลหน้าสลิปที่ไม่จำเป็นออกไปแบบรวบยอด ของเดิมของคุณเป๊ะๆ
     if any(keyword in line_upper for keyword in ["BILL", "REF", "CARD", "PRINTER", "RECEIPT", "TERMINAL", "OPCODE", "AMOUNT", "SEQUENCE", "S0_I", "1000A", "1000B", "00100", "00500"]):
         return None, None
         
@@ -3500,33 +3511,62 @@ def process_log_line(line):
     detected_reason = ""
     solution_text = "No manual suggestion available for this specific keyword."
 
-    # ดึงเวลาออกมาโชว์
-    timestamp_match = re.search(r'\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}', line)
-    log_time = timestamp_match.group(0) if timestamp_match else "Unknown Time"
+    # 🎯 แก้ไขการดักจับเวลาในบรรทัดเพื่อพ่วงต่อ TIMESTAMP ป้องกันระบบค้าง
+    time_match = re.search(r'\d{2}:\d{2}:\d{2}(?:\.\d+)?', line)
+    log_time = time_match.group(0) if time_match else "Unknown Time"
 
-    # 1. ตรวจเช็กจากระบบ Keywords หลักก่อน
-    for keyword in search_keywords:
-        clean_keyword = keyword.replace(r'\b', '').strip()
-        
-        # ถ้าเป็นคำสั้นพิเศษ บังคับตรวจสอบแบบคำโดดเดี่ยวๆ
-        if keyword in [r"\bNF\b", r"\bNT\b"]:
-            has_match = re.search(keyword, line_upper)
-        else:
-            has_match = clean_keyword in line_upper
+    # 🌟 [เพิ่มระบบดักจับตัวเลขข้ามเวลาตัวเก่งล่าสุด]: เช็กกลุ่มคำ Error/Failed ก่อนเป็นอันดับแรกสุดเพื่อล็อกความเสี่ยง
+    has_error_keyword = any(err_word in line_upper for err_word in ERROR_KEYWORDS)
+    
+    if has_error_keyword:
+        # สแกนหาชุดตัวเลขทั้งหมดในบรรทัด Log (ข้ามตัวเลขเวลา ย้อนไปคัดรหัสแท้)
+        numbers_found = CODE_PATTERN.findall(line)
+        for code_str in numbers_found:
+            # ข้ามตัวเลขบอกเวลาสั้นๆ ทั่วไป
+            if len(code_str) < 3 and not code_str.startswith('-'):
+                continue
+                
+            # ตรวจสอบเช็กคู่มือใน manual_db (แบบ String)
+            if code_str in manual_db:
+                is_matched = True
+                detected_reason = code_str
+                solution_text = manual_db[code_str]
+                break
+                
+            # ตรวจสอบเช็กคู่มือใน manual_db (แบบ Integer เผื่อไว้)
+            try:
+                if int(code_str) in manual_db:
+                    is_matched = True
+                    detected_reason = code_str
+                    solution_text = manual_db[int(code_str)]
+                    break
+            except ValueError:
+                pass
 
-        if has_match:
-            is_matched = True
-            detected_reason = clean_keyword
-            # ดึงคำแปลจากคลังข้อมูล
-            if clean_keyword in manual_db:
-                solution_text = manual_db[clean_keyword]
-            elif clean_keyword == "-14":
-                solution_text = "Note jam flag is active."
-            elif "NETWORK" in clean_keyword:
-                solution_text = "Network lost or disconnected."
-            break
+    # 1. ของเดิมของคุณ: หากระบบกลุ่ม Error ด้านบนไม่ทำงานหรือหาโค้ดไม่เจอ ให้วิ่งเช็กตามระบบ Keywords หลักต่อ
+    if not is_matched:
+        for keyword in search_keywords:
+            clean_keyword = keyword.replace(r'\b', '').strip()
+            
+            # ถ้าเป็นคำสั้นพิเศษ บังคับตรวจสอบแบบคำโดดเดี่ยวๆ
+            if keyword in [r"\bNF\b", r"\bNT\b"]:
+                has_match = re.search(keyword, line_upper)
+            else:
+                has_match = clean_keyword in line_upper
 
-    # 2. ตรวจเช็กจากระบบ Regex ตัวเลข (สำหรับดักรหัส 4-5 หลัก หรือ เลขติดลบ)
+            if has_match:
+                is_matched = True
+                detected_reason = clean_keyword
+                # ดึงคำแปลจากคลังข้อมูล
+                if clean_keyword in manual_db:
+                    solution_text = manual_db[clean_keyword]
+                elif clean_keyword == "-14":
+                    solution_text = "Note jam flag is active."
+                elif "NETWORK" in clean_keyword:
+                    solution_text = "Network lost or disconnected."
+                break
+
+    # 2. ของเดิมของคุณ: ตรวจเช็กจากระบบ Regex ตัวเลขสล๊อตสำรองกรณีคำหลุด
     if not is_matched:
         all_digit_groups = re.findall(r'\b\d+\b', line_upper)
         negative_codes = re.findall(r'-\d{3}\b', line_upper)
@@ -3534,18 +3574,18 @@ def process_log_line(line):
         for neg_code in negative_codes:
             if neg_code in manual_db:
                 is_matched = True
-                detected_reason = f"Error Code {neg_code}"
+                detected_reason = neg_code
                 solution_text = manual_db[neg_code]
                 break
             else:
                 is_matched = True
-                detected_reason = f"Negative Code {neg_code}"
+                detected_reason = neg_code
                 solution_text = f"พบรหัสติดลบระบบ {neg_code}"
                 break
 
         if not is_matched:
             for num_group in all_digit_groups:
-                if len(num_group) in [4, 5]:
+                if len(num_group) == 4 or len(num_group) == 5:
                     if num_group in manual_db:
                         is_matched = True
                         detected_reason = f"Error Code {num_group}"
@@ -3562,7 +3602,7 @@ def process_log_line(line):
         
     return None, None
 
-# --- ฟังก์ชันตัวช่วยวนลูปเนื้อหา Log เพื่อรวบรวมสถิติและผลลัพธ์ ---
+# --- ฟังก์ชันตัวช่วยวนลูปเนื้อหา Log เพื่อรวบรวมสถิติและผลลัพธ์ ของเดิมของคุณเป๊ะๆ ---
 def analyze_log_content(log_content, filename="File"):
     found_count = 0
     recovery_counter = 0
@@ -3584,12 +3624,12 @@ def analyze_log_content(log_content, filename="File"):
             
     return results_list, recovery_counter, retract_fail_counter, found_count
 
-# === แบ่งหน้าต่างการทำงาน Streamlit เป็น 2 วิธีตามแบบฟอร์มเดิม ===
+# === แบ่งหน้าต่างการทำงาน Streamlit เป็น 2 วิธีด้วย Key กำกับป้องกันปุ่มค้าง ===
 tab1, tab2 = st.tabs(["📁 [วิธีที่ 1] อัปโหลดไฟล์ Log (.txt / .zip)", "✍️ [วิธีที่ 2] พิมพ์คำค้นหาเดี่ยว หรือพิมพ์ Log"])
 
 # --- [วิธีที่ 1] จัดการผ่านหน้าต่างอัปโหลดไฟล์ ---
 with tab1:
-    uploaded_file = st.file_uploader("ลากไฟล์ .txt, .log, .data, .t หรือไฟล์ .zip มาวางตรงนี้", type=["txt", "log", "data", "t", "zip"])
+    uploaded_file = st.file_uploader("ลากไฟล์ .txt, .log, .data, .t หรือไฟล์ .zip มาวางตรงนี้", type=["txt", "log", "data", "t", "zip"], key="final_tab1_uploader_widget")
     
     if uploaded_file is not None:
         log_content = ""
@@ -3598,8 +3638,7 @@ with tab1:
         total_recovery = 0
         total_retract_fail = 0
         total_found = 0
-        
-        # จัดการแตกไฟล์กรณีเป็นไฟล์ .zip
+
         if uploaded_file.name.lower().endswith('.zip'):
             try:
                 with zipfile.ZipFile(uploaded_file, 'r') as zip_ref:
@@ -3615,8 +3654,6 @@ with tab1:
                 st.success("🎉 แตกไฟล์และวิเคราะห์ไฟล์ Zip สำเร็จ!")
             except Exception as e:
                 st.error(f"❌ ไม่สามารถอ่านไฟล์ Zip ได้: {e}")
-                
-        # จัดการกรณีเป็นไฟล์ข้อความเดี่ยวๆ (.txt, .log, .data, .t)
         else:
             try:
                 log_content = uploaded_file.read().decode('utf-8', errors='ignore')
@@ -3632,58 +3669,84 @@ with tab1:
         metrics_col2.metric("❌ ตรวจพบ MAXIMUM RETRACT FAIL TIMES", f"{total_retract_fail} ครั้ง")
         metrics_col3.metric("✨ พบเหตุการณ์ทริกเกอร์ทั้งหมด", f"{total_found} รายการ")
         
-        # --- ตารางแสดงรายงานความผิดพลาดที่ตรวจพบ ---
+        # --- ตารางแสดงรายงานความผิดพลาดที่ตรวจพบ พร้อมการพ่วงต่อเวลาจริงสำเร็จรูป ---
         if all_results:
             st.markdown("### 📝 รายละเอียด Log ที่ตรงกับเงื่อนไข")
             df = pd.DataFrame(all_results)
-            df = df[["time", "filename", "reason", "line", "solution"]]
-            df.columns = ["⏰ TIMESTAMP", "🗂️ FILE NAME", "🎯 TRIGGER", "📝 DETAIL LINE", "💡 RECOMMENDED"]
             
-            st.dataframe(df, use_container_width=True)
+            table_rows_final = []
+            for _, row in df.iterrows():
+                date_match = re.search(r'\d{8}', row["filename"])
+                if date_match:
+                    d_str = date_match.group()
+                    log_date = f"{d_str[6:8]}/{d_str[4:6]}/{d_str[0:4]}"
+                else:
+                    log_date = "Unknown Date"
+                
+                timestamp_full = f"{log_date} {row['time']}" if log_date != "Unknown Date" else row['time']
+                table_rows_final.append({
+                    "time": timestamp_full,
+                    "filename": row["filename"],
+                    "reason": row["reason"],
+                    "line": row["line"],
+                    "solution": row["solution"]
+                })
+                
+            df_final = pd.DataFrame(table_rows_final)
+            df_final = df_final[["time", "filename", "reason", "line", "solution"]]
+            df_final.columns = ["⏰ TIMESTAMP", "🗂️ FILE NAME", "🎯 TRIGGER", "📝 DETAIL LINE", "💡 RECOMMENDED"]
             
-            # ระบบปุ่มกดดาวน์โหลดไฟล์ผลลัพธ์รายงานออกมาใช้งาน
-            csv_data = df.to_csv(index=False).encode('utf-8-sig')
-            st.download_button(
-                label="📥 ดาวน์โหลดรายงานผลลัพธ์เป็นไฟล์ CSV",
-                data=csv_data,
-                file_name="log_analysis_report.csv",
-                mime="text/csv"
-            )
+            st.dataframe(df_final, use_container_width=True)
+            
+            csv_data = df_final.to_csv(index=False).encode('utf-8-sig')
+            st.download_button(label="📥 ดาวน์โหลดรายงานผลลัพธ์เป็นไฟล์ CSV", data=csv_data, file_name="log_analysis_report.csv", mime="text/csv", key="final_tab1_download_csv_btn")
         else:
             st.info("ไม่พบข้อมูล Log ใดๆ ที่ตรงตามเงื่อนไขการค้นหาในคลังคำศัพท์")
 
-# --- [วิธีที่ 2] จัดการผ่านการพิมพ์ค้นหาโดยตรง (Manual Input) ---
+# --- [วิธีที่ 2] ดึงช่องพิมพ์กล่องข้อมูลกลับมาและแสดงผลทันทีตามสไตล์เก่าของพี่ ---
+# --- ส่วนเติมช่องพิมพ์วิธีที่ 2 ดั้งเดิมกลับมาแบบสมบูรณ์ชัวร์ 100% ---
 with tab2:
-    user_input = st.text_input("กรอกรหัสความผิดพลาด, คำสำคัญ (เช่น NT, NF, 12087) หรือวางประโยค Log ตรงนี้:", key="manual_search").strip()
+    st.write("พิมพ์คำค้นหา รหัสโค้ด หรือวางข้อความบรรทัด Log ที่ต้องการตรวจสอบด้านล่างนี้")
+    st.write("กรอกคำค้นหา หรือบรรทัด Log เช่น 12054 หรือ DISPENSE NOTE FAILED")
     
-    if st.button("🚀 เริ่มวิเคราะห์ข้อมูล"):
-        if user_input:
-            user_input_upper = user_input.upper()
-            st.markdown("### 📦 ผลการวิเคราะห์")
-            
-            # เคสคำสั้นพิเศษแบบตรงตัวเพื่อความแม่นยำสูง
-            if user_input_upper in ["NT", "NF"]:
-                if user_input_upper in manual_db:
-                    st.success(f"🎯 **MATCHED TRIGGER**: {user_input_upper}")
-                    st.info(f"💡 **RECOMMENDED**: {manual_db[user_input_upper]}")
-                else:
-                    st.success(f"🎯 **MATCHED TRIGGER**: {user_input_upper}")
-                    st.warning("💡 **RECOMMENDED**: Found keyword but no description in DB.")
-            else:
-                # ตรวจสอบภาพรวมผ่านกระบวนการหลัก
-                res, _ = process_log_line(user_input)
-                if res:
-                    st.success(f"⏰ **TIMESTAMP**: {res['time']}")
-                    st.info(f"🎯 **MATCHED TRIGGER**: {res['reason']}")
-                    st.code(res['line'], language="text")
-                    st.warning(f"💡 **RECOMMENDED**: {res['solution']}")
-                else:
-                    if user_input_upper in manual_db:
-                        st.success(f"🎯 **MATCHED TRIGGER**: {user_input_upper}")
-                        st.info(f"💡 **RECOMMENDED**: {manual_db[user_input_upper]}")
-                    else:
-                        st.error("❌ ไม่พบข้อมูลรหัสความผิดพลาดหรือข้อความตรงตามเงื่อนไข (ระบบกรองคำมั่วออกให้แล้ว)")
+    # 🎯 ใช้ชื่อคีย์จำเพาะพิเศษ ป้องกันปุ่มล็อกค้างรวนเงียบแน่นอนครับพี่
+    user_input_box = st.text_input("กรอกคำค้นหา", "", label_visibility="collapsed", key="final_tab2_manual_input_box_unique99")
+    
+    if user_input_box:
+        input_cleaned = user_input_box.strip()
+        user_input_upper = input_cleaned.upper()
+        st.markdown("### 🎯 ผลการตรวจสอบ")
+        
+        # ส่งค่าไปตรวจเช็กผ่านกระบวนการหลักที่พี่ซ่อมสำเร็จแล้ว
+        res, _ = process_log_line(input_cleaned)
+        if res:
+            st.info(f"**คำสำคัญ/รหัสโค้ดที่ตรวจพบในช่องค้นหา:** {res['reason']}")
+            st.success(f"**คำอธิบายคู่มือและแนวทางแก้ไข:** {res['solution']}")
         else:
-            st.warning("กรุณาใส่ข้อความหรือคำค้นหาก่อนทำการกดปุ่ม")
+            if user_input_upper in manual_db:
+                st.info(f"**คำสำคัญ/รหัสโค้ดที่ตรวจพบในช่องค้นหา:** {user_input_upper}")
+                st.success(f"**คำอธิบายคู่มือและแนวทางแก้ไข:** {manual_db[user_input_upper]}")
+            else:
+                st.warning("❌ ไม่พบข้อมูลรหัสความผิดพลาดหรือข้อความตรงตามเงื่อนไขในระบบแมนนวลของคุณ")
+
+
+            
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+
+
+
 
 
