@@ -11,7 +11,7 @@ st.write("ระบบวิเคราะห์ไฟล์ Log ตู้ ATM 
 
 st.markdown(
     """
-    <a href="https://1drv.ms" target="_blank">
+    <a href="https://live.com" target="_blank">
         <button style="
             background-color: #2F80ED; 
             color: white; 
@@ -28,7 +28,6 @@ st.markdown(
     """, 
     unsafe_allow_html=True
 )
-
 # --- คลังคำค้นหาหลัก (search_keywords คำยาวขึ้นก่อนคำสั้น) ---
 search_keywords = [
     "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
