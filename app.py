@@ -10,8 +10,8 @@ st.set_page_config(page_title="Log Analyzer Pro", layout="wide")
 st.title("🔍 Log File & Text Analyzer (Streamlit Version)")
 st.write("ระบบวิเคราะห์ไฟล์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ")
 
-# ลิงก์สั้นแบบพิเศษ มั่นใจได้ว่า Streamlit ไม่อ่านเพี้ยนและเปิดได้ชัวร์ 100%
-st.link_button("📂 คลิกที่นี่เพื่อเปิดโฟลเดอร์ดาวน์โหลดคู่มือทั้งหมด (OneDrive)", "https://bit.ly")
+# เปลี่ยนมาใช้กล่องข้อความธรรมดา เพื่อป้องกันลิงก์เพี้ยน 100%
+st.text_input("📂 ลิงก์สำหรับคัดลอกไปดาวน์โหลดคู่มือทั้งหมด (OneDrive)", "https://1drv.ms")
 search_keywords = [
     "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
     "SOLENOIDREJECT", "SOLENOIDRETACK", "SLOTPANELBAAC", "PRINTERBAAC",
