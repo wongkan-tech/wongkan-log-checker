@@ -9,25 +9,12 @@ st.set_page_config(page_title="Log Analyzer Pro", layout="wide")
 st.title("🔍 Log File & Text Analyzer (Streamlit Version)")
 st.write("ระบบวิเคราะห์ไฟล์ Log ตู้ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขคู่มืออัตโนมัติ")
 
-st.markdown(
-    """
-    <a href="https://live.com" target="_blank">
-        <button style="
-            background-color: #2F80ED; 
-            color: white; 
-            padding: 10px 20px; 
-            border: none; 
-            border-radius: 5px; 
-            cursor: pointer; 
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 20px;">
-            ⬇️ คลิกเพื่อดาวน์โหลดคู่มือทั้งหมด
-        </button>
-    </a>
-    """, 
-    unsafe_allow_html=True
-)
+st.set_page_config(page_title="Log Analyzer Pro", layout="wide")
+st.title("🔍 Log File & Text Analyzer (Streamlit Version)")
+st.write("ระบบวิเคราะห์ไฟล์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ")
+
+# 🌟 วางโค้ดดึงลิงก์ผ่านระบบมาร์กดาวน์แบบไม่ใช้ HTML (ป้องกันลิงก์เพี้ยน)
+st.markdown("### 📂 [คลิกที่นี่เพื่อเปิดโฟลเดอร์ดาวน์โหลดคู่มือทั้งหมด (OneDrive)](https://1drv.ms)")
 # --- คลังคำค้นหาหลัก (search_keywords คำยาวขึ้นก่อนคำสั้น) ---
 search_keywords = [
     "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
