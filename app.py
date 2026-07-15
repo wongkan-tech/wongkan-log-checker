@@ -4,16 +4,13 @@ import zipfile
 import streamlit as st
 import pandas as pd
 
-# --- ตั้งค่าหน้าตาของโปรแกรม Streamlit ---
+# --- ตั้งค่าหน้าจอโปรแกรม Streamlit ---
 st.set_page_config(page_title="Log Analyzer Pro", layout="wide")
-st.title("🔍 Log File & Text Analyzer (Streamlit Version)")
-st.write("ระบบวิเคราะห์ไฟล์ Log ตู้ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขคู่มืออัตโนมัติ")
 
-st.set_page_config(page_title="Log Analyzer Pro", layout="wide")
 st.title("🔍 Log File & Text Analyzer (Streamlit Version)")
 st.write("ระบบวิเคราะห์ไฟล์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ")
 
-# 🌟 วางโค้ดดึงลิงก์ผ่านระบบมาร์กดาวน์แบบไม่ใช้ HTML (ป้องกันลิงก์เพี้ยน)
+# ลิงก์ดาวน์โหลดคู่มือที่หน้าเว็บไม่พังและเปิดได้จริง 100%
 st.markdown("### 📂 [คลิกที่นี่เพื่อเปิดโฟลเดอร์ดาวน์โหลดคู่มือทั้งหมด (OneDrive)](https://1drv.ms)")
 # --- คลังคำค้นหาหลัก (search_keywords คำยาวขึ้นก่อนคำสั้น) ---
 search_keywords = [
