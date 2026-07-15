@@ -9,9 +9,6 @@ st.set_page_config(page_title="Log Analyzer Pro", layout="wide")
 
 st.title("🔍 Log File & Text Analyzer (Streamlit Version)")
 st.write("ระบบวิเคราะห์ไฟล์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ")
-
-# เปลี่ยนมาใช้กล่องข้อความธรรมดา เพื่อป้องกันลิงก์เพี้ยน 100%
-st.text_input("📂 ลิงก์สำหรับคัดลอกไปดาวน์โหลดคู่มือทั้งหมด (OneDrive)", "https://1drv.ms")
 search_keywords = [
     "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
     "SOLENOIDREJECT", "SOLENOIDRETACK", "SLOTPANELBAAC", "PRINTERBAAC",
