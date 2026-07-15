@@ -10,8 +10,8 @@ st.set_page_config(page_title="Log Analyzer Pro", layout="wide")
 st.title("🔍 Log File & Text Analyzer (Streamlit Version)")
 st.write("ระบบวิเคราะห์ไฟล์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ")
 
-# เปลี่ยนเป็นลิงก์ตัวเต็มของ OneDrive เปิดได้ชัวร์ ไม่ติด Error 404
-st.markdown("### 📂 [คลิกที่นี่เพื่อเปิดโฟลเดอร์ดาวน์โหลดคู่มือทั้งหมด (OneDrive)](https://live.com)")
+# ใช้ปุ่มระบบแท้ของ Streamlit รองรับลิงก์ยาวได้ชัวร์ หน้าเว็บไม่พัง
+st.link_button("📂 คลิกที่นี่เพื่อเปิดโฟลเดอร์ดาวน์โหลดคู่มือทั้งหมด (OneDrive)", "https://live.com")
 search_keywords = [
     "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
     "SOLENOIDREJECT", "SOLENOIDRETACK", "SLOTPANELBAAC", "PRINTERBAAC",
