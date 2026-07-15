@@ -11,7 +11,7 @@ st.title("🔍 Log File & Text Analyzer (Streamlit Version)")
 st.write("ระบบวิเคราะห์ไฟล์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ")
 
 # ข้อความแจ้งลิงก์ดาวน์โหลดแบบปลอดภัย ให้ผู้ใช้นำไปเปิดเอง
-st.warning("📂 **ลิงก์ดาวน์โหลดคู่มือการใช้งาน:** โปรดคัดลอกลิงก์ด้านล่างนี้ไปวางในเบราว์เซอร์เพื่อเปิดดูไฟล์\n\n`https://1drv.ms`")
+st.warning("📂 **ลิงก์ดาวน์โหลดคู่มือการใช้งาน:** โปรดคัดลอกลิงก์ด้านล่างนี้ไปวางในเบราว์เซอร์เพื่อเปิดดูไฟล์\n\n`https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec`")
 search_keywords = [
     "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
     "SOLENOIDREJECT", "SOLENOIDRETACK", "SLOTPANELBAAC", "PRINTERBAAC",
