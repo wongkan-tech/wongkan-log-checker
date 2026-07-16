@@ -3910,7 +3910,7 @@ else:
             
             try:
                 response = client.chat.completions.create(
-                    model="deepseek-chat",
+                    model="deepseek-reasoner",
                     messages=[
                         {"role": "system", "content": "คุณคือวิศวกรเทคนิคผู้เชี่ยวชาญระดับสูงด้านการซ่อมบำรุงตู้ ATM ทุกรุ่น ให้ตอบคำถามและคำแนะนำแก่ช่างหน้างานเป็นภาษาไทยอย่างละเอียด เป็นขั้นตอน 1, 2, 3 ชัดเจน ถูกต้อง ปลอดภัย และกระชับที่สุด"},
                         *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
