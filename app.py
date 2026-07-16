@@ -3900,7 +3900,7 @@ if prompt := st.chat_input("พิมพ์รหัส Error หรือวา
                  full_response = ""
             
             try:
-                response = client.chat.completions.create(
+                 response = client.chat.completions.create(
                     model="deepseek-chat",
                     temperature=0.2,
                     max_tokens=2000,
