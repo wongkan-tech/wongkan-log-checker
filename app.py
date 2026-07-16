@@ -3,6 +3,7 @@ import os
 import zipfile
 import streamlit as st
 import pandas as pd
+from openai import OpenAI
 
 # =========================================================================
 # --- [ส่วนที่ 1: ตั้งค่าหน้าจอโปรแกรม Streamlit แบบไร้ขอบกว้างเต็มพิกัด] ---
@@ -3867,7 +3868,81 @@ st.markdown("""
 
 st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 35px;'></div>", unsafe_allow_html=True)
 
+# =========================================================================
+# --- [ส่วนสุดท้าย: ศูนย์เชื่อมต่อสมองอัจฉริยะ DeepSeek API โหมดฟรีตลอดชีพ] ---
+# =========================================================================
+from openai import OpenAI
 
+DEEPSEEK_API_KEY = st.secrets.get("DEEPSEEK_API_KEY")
+
+st.markdown("### 🤖 ศูนย์แชทอัจฉริยะวิเคราะห์เคสซ่อมตู้ ATM (Powered by DeepSeek)")
+
+if not DEEPSEEK_API_KEY:
+    st.error("❌ ไม่พบรหัส DEEPSEEK_API_KEY ในระบบหลังบ้าน (Secrets) กรุณาตรวจสอบอีกครั้ง")
+else:
+        client = OpenAI(
+            api_key=DEEPSEEK_API_KEY,
+            base_url="https://api.deepseek.com"
+        )
+
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        if prompt := st.chat_input("พิมพ์รหัส Error หรือวางข้อความ Log ให้ AI ช่วยวิเคราะห์ที่นี่..."):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                full_response = ""
+                
+                try:
+                   response = client.chat.completions.create(
+    model="deepseek-chat",
+    temperature=0.2,
+    max_tokens=2000,
+    messages=[
+        {
+            "role": "system",
+            "content": """
+คุณคือวิศวกรเทคนิคผู้เชี่ยวชาญระดับสูงด้านการซ่อมบำรุงตู้ ATM ทุกยี่ห้อ
+
+หน้าที่:
+- วิเคราะห์ Log ATM
+- วิเคราะห์ Error Code
+- แนะนำขั้นตอนตรวจสอบให้ช่างหน้างาน
+
+รูปแบบคำตอบ:
+1. วิเคราะห์สาเหตุที่เป็นไปได้
+2. จุดที่ต้องตรวจสอบ
+3. วิธีแก้ไขทีละขั้นตอน
+4. ข้อควรระวัง
+
+ตอบเป็นภาษาไทย ให้ละเอียด ชัดเจน กระชับ และปลอดภัย
+"""
+        },
+        *[
+            {
+                "role": m["role"],
+                "content": m["content"]
+            }
+            for m in st.session_state.messages
+        ]
+    ]
+)
+                        stream=False
+                    )
+                    full_response = response.choices.message.content
+                    message_placeholder.markdown(full_response)
+                except Exception as e:
+                    st.error(f"❌ ระบบบริการแชท AI ขัดข้องชั่วคราว: {str(e)}")
+            
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
 
 
 
