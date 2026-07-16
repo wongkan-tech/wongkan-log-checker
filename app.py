@@ -125,17 +125,7 @@ st.markdown("""
         font-size: 16px;
         letter-spacing: 0.2px;
     }
-    /* 🎯 ตัวหนังสือในกล่องพิมพ์แชทและช่องค้นหาเป็นสีดำเข้ม ช่างมองเห็นชัดเจน */
-    div[data-testid="stChatInput"] textarea,
-    div[data-testid="stTextInput"] input,
-    .stTextInput input,
-    .stChatInput textarea {
-        color: #111827 !important;
-        -webkit-text-fill-color: #111827 !important;
-        background-color: #ffffff !important;
-    }
-	
-	</style>
+    </style>
 """, unsafe_allow_html=True)
 
 # =========================================================================
@@ -3796,6 +3786,7 @@ with tab1:
             try:
                 log_content = uploaded_file.read().decode('utf-8', errors='ignore')
                 all_results, total_recovery, total_retract_fail, total_found = analyze_log_content(log_content, uploaded_file.name)
+                st.success("🎉 วิเคราะห์ไฟล์ข้อความสำเร็จ!")
             except Exception as e:
                 st.error(f"❌ ไม่สามารถอ่านไฟล์ข้อมูลได้: {e}")
 
@@ -3828,7 +3819,7 @@ with tab1:
                     "line": row["line"],
                     "solution": row["solution"]
                 })
-
+                
             df_final = pd.DataFrame(table_rows_final)
             df_final = df_final[["time", "filename", "reason", "line", "solution"]]
             df_final.columns = ["⏰ TIMESTAMP", "🗂️ FILE NAME", "🎯 TRIGGER", "📝 DETAIL LINE", "💡 RECOMMENDED"]
@@ -3841,10 +3832,12 @@ with tab1:
             st.info("ไม่พบข้อมูล Log ใดๆ ที่ตรงตามเงื่อนไขการค้นหาในคลังคำศัพท์")
 
 # --- [วิธีที่ 2] ดึงช่องพิมพ์กล่องข้อมูลกลับมาและแสดงผลทันทีตามสไตล์เก่าของพี่ ---
+# --- ส่วนเติมช่องพิมพ์วิธีที่ 2 ดั้งเดิมกลับมาแบบสมบูรณ์ชัวร์ 100% ---
 with tab2:
     st.write("พิมพ์คำค้นหา รหัสโค้ด หรือวางข้อความบรรทัด Log ที่ต้องการตรวจสอบด้านล่างนี้")
     st.write("กรอกคำค้นหา หรือบรรทัด Log เช่น 12054 หรือ DISPENSE NOTE FAILED")
     
+    # 🎯 ใช้ชื่อคีย์จำเพาะพิเศษ ป้องกันปุ่มล็อกค้างรวนเงียบแน่นอนครับพี่
     user_input_box = st.text_input("กรอกคำค้นหา", "", label_visibility="collapsed", key="final_tab2_manual_input_box_unique99")
     
     if user_input_box:
@@ -3852,6 +3845,7 @@ with tab2:
         user_input_upper = input_cleaned.upper()
         st.markdown("### 🎯 ผลการตรวจสอบ")
         
+        # ส่งค่าไปตรวจเช็กผ่านกระบวนการหลักที่พี่ซ่อมสำเร็จแล้ว
         res, _ = process_log_line(input_cleaned)
         if res:
             st.info(f"**คำสำคัญ/รหัสโค้ดที่ตรวจพบในช่องค้นหา:** {res['reason']}")
@@ -3862,11 +3856,10 @@ with tab2:
                 st.success(f"**คำอธิบายคู่มือและแนวทางแก้ไข:** {manual_db[user_input_upper]}")
             else:
                 st.warning("❌ ไม่พบข้อมูลรหัสความผิดพลาดหรือข้อความตรงตามเงื่อนไขในระบบแมนนวลของคุณ")
-
-# กล่องลิงก์ดาวน์โหลดคู่มือ OneDrive แผงยานแม่ดั้งเดิมของคุณพี่
+# ย้ายคลังกล่องลิงก์ดาวน์โหลดคู่มือให้สะท้อนเงาสวยงาม
 st.markdown("""
     <div class="folder-link-box">
-        🔑 <b>RESOURCE LINK:</b> <a href="https://1drv.ms`" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">
+        🔑 <b>RESOURCE LINK:</b> <a href="https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec`" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">
         [ดาวน์โหลดคู่มือทั้งหมด ผ่าน OneDrive]
         </a>
     </div>
@@ -3875,43 +3868,6 @@ st.markdown("""
 st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 35px;'></div>", unsafe_allow_html=True)
 
 
-        client = OpenAI(
-            api_key=DEEPSEEK_API_KEY,
-            base_url="https://deepseek.com"
-        )
-
-        if "messages" not in st.session_state:
-            st.session_state.messages = []
-
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
-        if prompt := st.chat_input("พิมพ์รหัส Error หรือวางข้อความ Log ให้ AI ช่วยวิเคราะห์ที่นี่..."):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            with st.chat_message("assistant"):
-                message_placeholder = st.empty()
-                full_response = ""
-                
-                try:
-                    response = client.chat.completions.create(
-                        model="deepseek-chat",
-                        messages=[
-                            {"role": "system", "content": "คุณคือวิศวกรเทคนิคผู้เชี่ยวชาญระดับสูงด้านการซ่อมบำรุงตู้ ATM ทุกรุ่น ให้ตอบคำถามและคำแนะนำแก่ช่างหน้างานเป็นภาษาไทยอย่างละเอียด เป็นขั้นตอน 1, 2, 3 ชัดเจน ถูกต้อง ปลอดภัย และกระชับที่สุด"},
-                            *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-                        ],
-                        stream=False
-                    )
-                    full_response = response.choices.message.content
-                    message_placeholder.markdown(full_response)
-                except Exception as e:
-                    st.error(f"❌ ระบบบริการแชท AI ขัดข้องชั่วคราว: {str(e)}")
-            
-            st.session_state.messages.append({"role": "assistant", "content": full_response})     
-    
 
 
 
@@ -3922,7 +3878,6 @@ st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bo
 
 
             
-
 
 
 
