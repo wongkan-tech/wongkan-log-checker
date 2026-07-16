@@ -3891,13 +3891,13 @@ for message in st.session_state.messages:
                 	st.markdown(message["content"])
 
 if prompt := st.chat_input("พิมพ์รหัส Error หรือวางข้อความ Log ให้ AI ช่วยวิเคราะห์ที่นี่..."):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-                st.markdown(prompt)
+             st.session_state.messages.append({"role": "user", "content": prompt})
+             with st.chat_message("user"):
+                  st.markdown(prompt)
 
-            with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            full_response = ""
+             with st.chat_message("assistant"):
+                 message_placeholder = st.empty()
+                 full_response = ""
             
             try:
                 response = client.chat.completions.create(
