@@ -4,96 +4,149 @@ import zipfile
 import streamlit as st
 import pandas as pd
 
-# --- ตั้งค่าหน้าจอโปรแกรม Streamlit (ของเดิมของคุณ) ---
-st.set_page_config(page_title="Log Analyzer Pro", layout="wide")
+# =========================================================================
+# --- [ส่วนที่ 1: ตั้งค่าหน้าจอโปรแกรม Streamlit แบบไร้ขอบกว้างเต็มพิกัด] ---
+# =========================================================================
+st.set_page_config(page_title="ATM Log Intelligence Center", layout="wide")
 
 # =========================================================================
-# --- [ส่วนที่ 1: ตกแต่งหน้าตาด้วย Premium Custom CSS (เพิ่มเข้าใหม่เพื่อความสวยงาม)] ---
+# --- [ส่วนที่ 2: มหากาพย์ CSS ดีไซน์ระดับโลก (Advanced Cyber Metallic Neon) ⭐⭐⭐⭐⭐] ---
 # =========================================================================
 st.markdown("""
     <style>
-    /* 1. พื้นหลังไล่เฉดสีสุดหรู สไตล์ห้องควบคุมระบบการเงิน (Cybersecurity Dashboard) */
+    /* นำเข้าฟอนต์ Google Fonts เพื่อความพรีเมียม */
+    @import url('https://googleapis.com');
+
+    /* 1. มิติพื้นหลังห้องคอนโทรลรูมข้ามจักรวาล (Deep Space Void Grid) */
     .stApp {
-        background: radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 60%, #020617 100%);
-        color: #f8fafc;
-        font-family: 'Kanit', 'Inter', sans-serif;
+        background-color: #030712;
+        background-image: 
+            radial-gradient(at 0% 0%, rgba(31, 41, 234, 0.12) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%),
+            radial-gradient(at 50% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%);
+        color: #f3f4f6;
+        font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
     }
     
-    /* 2. ตัวอักษรหัวข้อใหญ่ เรืองแสงและไล่สีแบบนีออน */
-    .main-title {
-        background: linear-gradient(90deg, #38bdf8 0%, #818cf8 50%, #34d399 100%);
+    /* 2. หัวข้อพรีเมียมสามมิติแบบ Dynamic Chroma Text */
+    .ultra-title {
+        background: linear-gradient(135deg, #38bdf8 10%, #6366f1 50%, #34d399 90%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 800;
-        font-size: 2.6rem;
-        margin-bottom: 5px;
-        letter-spacing: -0.5px;
-        filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.3));
+        font-size: 3.2rem;
+        letter-spacing: -1.5px;
+        margin-bottom: 2px;
+        filter: drop-shadow(0 4px 12px rgba(99, 102, 241, 0.35));
     }
     
-    /* 3. กล่องแสดงผลลัพธ์ (Log Card) สไตล์กระจกฝ้าโปร่งแสง มิติลึกโค้งมน */
+    /* 3. ยกระดับกล่องการ์ดแนวเหล็กกล้ากระจกเงา (Chrono Cyber Card) */
     .log-card {
-        background: rgba(15, 23, 42, 0.65);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 24px;
-        padding: 28px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1);
-        margin-bottom: 25px;
-        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        background: linear-gradient(145deg, rgba(15, 23, 42, 0.75) 0%, rgba(3, 7, 18, 0.9) 100%);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 28px;
+        padding: 32px;
+        margin-bottom: 28px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 
+            0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+            0 2px 4px -1px rgba(0, 0, 0, 0.06),
+            inset 0 1px 1px rgba(255, 255, 255, 0.1);
+        transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        position: relative;
+        overflow: hidden;
     }
     
-    /* แอนิเมชันตอนเอาเมาส์ชี้ที่กล่องให้ยกตัวขึ้น ขอบเรืองแสงสีฟ้า */
+    /* โครงขอบเรืองแสงไฟวิ่งนีออนตัดขั้วเวลาวางเมาส์ชี้ (Neon Border Explosion) */
     .log-card:hover {
-        transform: translateY(-6px);
-        border-color: #0ea5e9;
-        box-shadow: 0 30px 60px rgba(14, 165, 233, 0.18);
+        transform: translateY(-8px) scale(1.005);
+        border-color: rgba(99, 102, 241, 0.5);
+        box-shadow: 
+            0 30px 60px -15px rgba(3, 7, 18, 0.9), 
+            0 0 30px 0 rgba(99, 102, 241, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
     
-    /* 4. ปรับโฉมปุ่มกดแบบดั้งเดิมของ Streamlit ให้เป็นปุ่ม Cyber Gradient */
-    div.stButton > button {
-        background: linear-gradient(90deg, #0284c7 0%, #4f46e5 100%) !important;
-        color: #ffffff !important;
-        border: none !important;
-        padding: 14px 28px !important;
-        border-radius: 16px !important;
-        font-weight: 600 !important;
-        font-size: 16px !important;
-        letter-spacing: 0.5px;
-        box-shadow: 0 8px 25px rgba(79, 70, 229, 0.35) !important;
-        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        width: 100%;
-    }
-    /* ลูกเล่นปุ่มกดตอนเมาส์ชี้ */
-    div.stButton > button:hover {
-        background: linear-gradient(90deg, #0ea5e9 0%, #6366f1 100%) !important;
-        transform: scale(1.02) translateY(-2px) !important;
-        box-shadow: 0 12px 30px rgba(99, 102, 241, 0.55) !important;
-    }
-    div.stButton > button:active {
-        transform: scale(0.98) !important;
+    /* แถบไฟนีออนวิ่งจำลองแอบซ่อนอยู่ข้างกล่อง */
+    .log-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 4px; height: 100%;
+        background: linear-gradient(to bottom, #38bdf8, #6366f1);
+        border-radius: 4px 0 0 4px;
     }
 
-    /* 5. ตกแต่งกล่องข้อความย่อย */
-    .sub-text {
-        color: #94a3b8;
-        font-size: 15px;
+    /* 4. แปลงโฉมปุ่มกดเป็นบล็อกเหล็กสลักแสงเรือง (Liquid Holographic Button) */
+    div.stButton > button {
+        background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding: 16px 32px !important;
+        border-radius: 20px !important;
+        font-weight: 800 !important;
+        font-size: 17px !important;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4) !important;
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        position: relative;
+    }
+    div.stButton > button:hover {
+        background: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%) !important;
+        transform: translateY(-3px) scale(1.02) !important;
+        box-shadow: 
+            0 20px 35px -5px rgba(79, 70, 229, 0.6),
+            0 0 25px rgba(34, 211, 238, 0.4) !important;
+        letter-spacing: 1.5px;
+    }
+    div.stButton > button:active {
+        transform: translateY(-1px) scale(0.98) !important;
+    }
+
+    /* 5. ลิงก์ดาวน์โหลดสุดเท่ แยกกล่องออกมาเป็นยานแม่ */
+    .folder-link-box {
+        background: rgba(30, 41, 59, 0.3);
+        border: 1px dashed rgba(56, 189, 248, 0.3);
+        border-radius: 16px;
+        padding: 16px;
+        margin-top: 15px;
         margin-bottom: 30px;
+        transition: all 0.3s;
+    }
+    .folder-link-box:hover {
+        background: rgba(56, 189, 248, 0.05);
+        border-color: #38bdf8;
+    }
+
+    /* ตกแต่งคำบรรยาย */
+    .sub-text {
+        color: #9ca3af;
+        font-size: 16px;
+        letter-spacing: 0.2px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- [ ส่วนหน้าเว็บจัดวางข้อมูลสไตล์ใหม่ พ่วงคำและลิงก์ของเก่าของคุณเป๊ะๆ ] ---
-st.markdown('<h1 class="main-title">🖥️ ATM Log Intelligence Analyzer</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-text">ระบบวิเคราะห์ข้อมูล Log ตู้อัตโนมัติและตรวจจับรหัสข้ามเวลาเวอร์ชันพรีเมียม</p>', unsafe_allow_html=True)
+# =========================================================================
+# --- [ส่วนที่ 3: ส่วนหน้าเว็บโครงสร้างเหล็กขัดเงาจัดเต็ม] ---
+# =========================================================================
+st.markdown('<h1 class="ultra-title">🖥️ ATM LOG INTELLIGENCE SYSTEM</h1>', unsafe_allow_html=True)
+st.markdown('<p class="sub-text">ศูนย์ประมวลผลและวิเคราะห์รหัสข้อมูลข้ามตู้ธนาคารแบบเรียทามพรีเมียมไฮเอนด์</p>', unsafe_allow_html=True)
 
-# ลิงก์ดาวน์โหลดคู่มือดั้งเดิมของคุณ
-st.markdown("📂 **[คลิกที่นี่เพื่อเปิดโฟลเดอร์ดาวน์โหลดคู่มือทั้งหมด (OneDrive)]** \n  https://1drv.ms`")
-st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 30px;'></div>", unsafe_allow_html=True)
+# ย้ายคลังกล่องลิงก์ดาวน์โหลดคู่มือให้สะท้อนเงาสวยงาม
+st.markdown("""
+    <div class="folder-link-box">
+        🔑 <b>RESOURCE LINK:</b> <a href="https://1drv.ms" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">
+        [คลิกเปิดคลังไดรฟ์รวมโฟลเดอร์คู่มือสแกนรหัสทั้งหมดบน OneDrive]
+        </a>
+    </div>
+""", unsafe_allow_html=True)
+
+st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 35px;'></div>", unsafe_allow_html=True)
 
 # =========================================================================
-# --- [ ส่วนข้อมูลตัวแปรระบบค้นหาดั้งเดิมของคุณเป๊ะๆ ] ---
+# --- [ส่วนที่ 4: ตัวแปรคลังคำสำคัญและรูปแบบเงื่อนไขสแกนดั้งเดิมของคุณ] ---
 # =========================================================================
 search_keywords = [
     "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
@@ -115,10 +168,8 @@ search_keywords = [
 ]
 
 ERROR_KEYWORDS = ["ERROR", "ERR", "FAILED", "FAIL", "FAULT", "PAPER FAULT"]
-
 CODE_PATTERN = re.compile(r'-?\d{3,5}')
 
-# ด้านล่างนี้สามารถวาง manual_db = { และฟังก์ชันที่เหลือของคุณรันต่อได้เลยครับ...
 
 
 
