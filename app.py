@@ -125,7 +125,17 @@ st.markdown("""
         font-size: 16px;
         letter-spacing: 0.2px;
     }
-    </style>
+    /* 🎯 ตัวหนังสือในกล่องพิมพ์แชทและช่องค้นหาเป็นสีดำเข้ม ช่างมองเห็นชัดเจน */
+    div[data-testid="stChatInput"] textarea,
+    div[data-testid="stTextInput"] input,
+    .stTextInput input,
+    .stChatInput textarea {
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827 !important;
+        background-color: #ffffff !important;
+    }
+	
+	</style>
 """, unsafe_allow_html=True)
 
 # =========================================================================
@@ -3913,7 +3923,7 @@ else:
                 st.error(f"❌ ระบบบริการแชท AI ขัดข้องชั่วคราว: {str(e)}")
         
         st.session_state.messages.append({"role": "assistant", "content": full_response})
-
+    
 
 
 
