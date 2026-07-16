@@ -3977,16 +3977,6 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-# =========================================================================
-# --- [ส่วนผสมพิเศษ: แปลงเป็นขาว-ฟ้า แต่คงเอฟเฟกต์เมาส์ชี้กระพริบตัวเก่าไว้] ---
-# =========================================================================
-st.markdown("""
-<style>
-    /* บังคับพื้นหลังใหญ่ให้สว่าง สบายตา */
-    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-        background-color: #f8fafc !important;
-        background-image: none !important; /* ถอนพื้นหลังอวกาศมืดออก */
-    }
 
     /* ย้อมสีข้อความคำตอบ AI ให้เป็นสีเทาเข้ม ช่างอ่านง่ายชัดเจน */
     .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span {
