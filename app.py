@@ -3875,18 +3875,6 @@ st.markdown("""
 st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 35px;'></div>", unsafe_allow_html=True)
 
 
-# =========================================================================
-# --- [ส่วนสุดท้าย: ศูนย์เชื่อมต่อสมองอัจฉริยะ DeepSeek API โหมดฟรีตลอดชีพ] ---
-# =========================================================================
-from openai import OpenAI
-
-DEEPSEEK_API_KEY = st.secrets.get("DEEPSEEK_API_KEY")
-
-st.markdown("### 🤖 ศูนย์แชทอัจฉริยะวิเคราะห์เคสซ่อมตู้ ATM (Powered by DeepSeek)")
-
-if not DEEPSEEK_API_KEY:
-    st.error("❌ ไม่พบรหัส DEEPSEEK_API_KEY ในระบบหลังบ้าน (Secrets) กรุณาตรวจสอบอีกครั้ง")
-else:
         client = OpenAI(
             api_key=DEEPSEEK_API_KEY,
             base_url="https://deepseek.com"
@@ -3922,7 +3910,7 @@ else:
                 except Exception as e:
                     st.error(f"❌ ระบบบริการแชท AI ขัดข้องชั่วคราว: {str(e)}")
             
-            st.session_state.messages.append({"role": "assistant", "content": full_response})       
+            st.session_state.messages.append({"role": "assistant", "content": full_response})     
     
 
 
