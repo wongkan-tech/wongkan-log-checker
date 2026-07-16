@@ -3890,29 +3890,36 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
                 	st.markdown(message["content"])
 
-      if prompt := st.chat_input("พิมพ์รหัส Error หรือวางข้อความ Log ให้ AI ช่วยวิเคราะห์ที่นี่..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+if prompt := st.chat_input("พิมพ์รหัส Error หรือวางข้อความ Log ให้ AI ช่วยวิเคราะห์ที่นี่..."):
 
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            full_response = ""
-            
-            try:
-                response = client.chat.completions.create(
-                    model="deepseek-chat",
-                    temperature=0.2,
-                    max_tokens=2000,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": """
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt
+    })
+
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+
+        message_placeholder = st.empty()
+        full_response = ""
+
+        try:
+            response = client.chat.completions.create(
+                model="deepseek-chat",
+                temperature=0.2,
+                max_tokens=2000,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": """
 คุณคือวิศวกรเทคนิคผู้เชี่ยวชาญระดับสูงด้านการซ่อมบำรุงตู้ ATM ทุกยี่ห้อ
 
 หน้าที่:
 - วิเคราะห์ Log ATM
 - วิเคราะห์ Error Code
+- วิเคราะห์สาเหตุของปัญหา
 - แนะนำขั้นตอนตรวจสอบให้ช่างหน้างาน
 
 รูปแบบคำตอบ:
@@ -3921,30 +3928,33 @@ for message in st.session_state.messages:
 3. วิธีแก้ไขทีละขั้นตอน
 4. ข้อควรระวัง
 
-ตอบเป็นภาษาไทย ให้ละเอียด ชัดเจน กระชับ และปลอดภัย
+ตอบเป็นภาษาไทย
+ให้ละเอียด ชัดเจน กระชับ และปลอดภัย
 """
-                        },
-                        *[
-                            {
-                                "role": m["role"],
-                                "content": m["content"]
-                            }
-                            for m in st.session_state.messages
-                        ]
-                    ],
-                    stream=False
-                )
+                    },
+                    *[
+                        {
+                            "role": m["role"],
+                            "content": m["content"]
+                        }
+                        for m in st.session_state.messages
+                    ]
+                ]
+            )
 
-                full_response = response.choices[0].message.content
-                message_placeholder.markdown(full_response)
+            full_response = response.choices[0].message.content
 
-            except Exception as e:
-                st.error(f"❌ ระบบบริการแชท AI ขัดข้องชั่วคราว: {str(e)}")
+            message_placeholder.markdown(full_response)
 
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": full_response
-        })
+        except Exception as e:
+            full_response = f"เกิดข้อผิดพลาด: {str(e)}"
+            st.error(f"❌ ระบบบริการแชท AI ขัดข้องชั่วคราว: {str(e)}")
+
+
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": full_response
+    })
 
 
             
