@@ -131,7 +131,7 @@ st.markdown("""
 # =========================================================================
 # --- [ส่วนที่ 3: ส่วนหน้าเว็บโครงสร้างเหล็กขัดเงาจัดเต็ม] ---
 # =========================================================================
-st.markdown('<h1 class="ultra-title">🖥️ ATM LOG INTELLIGENCE SYSTEM</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="ultra-title">🖥️  ATM Technical Intelligence</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-text">ระบบวิเคราะห์ไฟลน์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ</p>', unsafe_allow_html=True)
 
 
