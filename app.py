@@ -3786,7 +3786,7 @@ with tab1:
             try:
                 log_content = uploaded_file.read().decode('utf-8', errors='ignore')
                 all_results, total_recovery, total_retract_fail, total_found = analyze_log_content(log_content, uploaded_file.name)
-                            except Exception as e:
+            except Exception as e:
                 st.error(f"❌ ไม่สามารถอ่านไฟล์ข้อมูลได้: {e}")
 
         # --- ส่วนแสดงผล Dashboard สรุปจำนวนตัวนับ (Counter Cards) ---
