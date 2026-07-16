@@ -3978,16 +3978,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-/* กล่องพิมพ์แชทด้านล่างพื้นหลังขาว สะอาดตา */
-    div[data-testid="stChatInput"] {
-        background-color: #ffffff !important;
-    }
-    div[data-testid="stChatInput"] textarea {
-        color: #0f172a !important;
-        -webkit-text-fill-color: #0f172a !important;
-    }
-</style>
-""", unsafe_allow_html=True)
 # =========================================================================
 # --- [แก้ไขเพิ่มเติม: เปลี่ยนตัวหนังสือทั่วไปและในตารางเป็นสีเขียวเทคนิคชัดเจน] ---
 # =========================================================================
