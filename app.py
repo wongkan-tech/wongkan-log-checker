@@ -3977,42 +3977,8 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-# =========================================================================
-# --- [ส่วนผสมพิเศษ: แปลงเป็นขาว-ฟ้า แต่คงเอฟเฟกต์เมาส์ชี้กระพริบตัวเก่าไว้] ---
-# =========================================================================
-st.markdown("""
-<style>
-    /* บังคับพื้นหลังใหญ่ให้สว่าง สบายตา */
-    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-        background-color: #f8fafc !important;
-        background-image: none !important; /* ถอนพื้นหลังอวกาศมืดออก */
-    }
 
-    /* ย้อมสีข้อความคำตอบ AI ให้เป็นสีเทาเข้ม ช่างอ่านง่ายชัดเจน */
-    .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span {
-        color: #1e293b !important;
-    }
-    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
-        color: #1e40af !important;
-        font-weight: bold !important;
-    }
-
-    /* เก็บเอฟเฟกต์การ์ดเดิมไว้ แต่เปลี่ยนโทนสีพื้นให้สว่างสากล */
-    .log-card {
-        background: #ffffff !important;
-        color: #1e293b !important;
-        border: 1px solid #e2e8f0 !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
-    }
-
-    /* ล็อคให้เอฟเฟกต์เมาส์ชี้ (Hover) กระพริบเรืองแสงสีฟ้าสว่างๆ วิ่งเหมือนเดิม */
-    .log-card:hover {
-        border-color: #3b82f6 !important;
-        box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.2), 
-                    0 10px 10px -5px rgba(59, 130, 246, 0.1) !important;
-    }
-
-    /* กล่องพิมพ์แชทด้านล่างพื้นหลังขาว สะอาดตา */
+/* กล่องพิมพ์แชทด้านล่างพื้นหลังขาว สะอาดตา */
     div[data-testid="stChatInput"] {
         background-color: #ffffff !important;
     }
