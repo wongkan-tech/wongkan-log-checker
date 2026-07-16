@@ -3955,7 +3955,19 @@ if prompt := st.chat_input("พิมพ์รหัส Error หรือวา
         "role": "assistant",
         "content": full_response
     })
-
+st.markdown("""
+<style>
+    /* 🎯 ตัวหนังสือในกล่องพิมพ์แชทและช่องค้นหาเป็นสีดำเข้ม ช่างมองเห็นชัดเจน */
+    div[data-testid="stChatInput"] textarea,
+    div[data-testid="stTextInput"] input,
+    .stTextInput input,
+    .stChatInput textarea {
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827 !important;
+        background-color: #ffffff !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
             
 
