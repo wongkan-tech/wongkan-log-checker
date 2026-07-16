@@ -4013,6 +4013,30 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+# =========================================================================
+# --- [แก้ไขเพิ่มเติม: เปลี่ยนตัวหนังสือทั่วไปและในตารางเป็นสีเขียวเทคนิคชัดเจน] ---
+# =========================================================================
+st.markdown("""
+<style>
+    /* 🎯 เปลี่ยนข้อความเนื้อหาทั่วไป และรายการสัญลักษณ์ให้เป็นสีเขียวเข้มอ่านง่าย */
+    .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span {
+        color: #0d6efd !important; /* ย้อมสีข้อความหลัก */
+        color: #15803d !important; /* สีเขียวเข้มสไตล์หน้าจอ Terminal บนพื้นขาว */
+    }
+
+    /* 🎯 บังคับตัวหนังสือทุกช่องในตาราง Log ขวาสุดให้โผล่เป็นสีเขียวเข้มชัดเจน ไม่เป็นสีขาวแล้ว */
+    .stDataFrame td, .stDataFrame th, table td, table th, code, pre {
+        color: #166534 !important; /* สีเขียวเข้มลึก คมชัดบนพื้นขาว */
+        -webkit-text-fill-color: #166534 !important;
+    }
+    
+    /* คงสีหัวข้อหลักให้ตัดกันสวยงาม */
+    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+        color: #16a34a !important; /* หัวข้อสีเขียวสว่างขึ้นมาเล็กน้อย */
+        font-weight: bold !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
             
 
