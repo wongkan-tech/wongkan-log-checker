@@ -3901,17 +3901,31 @@ if prompt := st.chat_input("พิมพ์รหัส Error หรือวา
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
+            message_placeholder = st.empty()
+            full_response = ""
+            
+            # 🔍 [ระบบค้นหาออโต้]: ดึงข้อมูลจาก manual_db ของคุณมาให้อ่านก่อนตอบ
+            context_data = "ไม่พบข้อมูลรหัสนี้ในฐานข้อมูลระบบ"
+            match_results = []
+            prompt_lower = prompt.lower()
+            
+            # วิ่งไล่เช็กใน manual_db ว่ามีคำหรือรหัสตรงกับที่ช่างพิมพ์ถามไหม
+            if 'manual_db' in locals() or 'manual_db' in globals():
+                # ค้นหาว่าคำที่ช่างพิมพ์มา มีตรงกับ Key หรือข้อความในระบบไหม
+                for key, value in manual_db.items():
+                    if key.lower() in prompt_lower or prompt_lower in key.lower() or prompt_lower in value.lower():
+                        match_results.append(f"📌 รหัส/คำสำคัญ [{key}]: {str(value)}")
+                
+                if match_results:
+                    context_data = "\n".join(match_results)
 
-        message_placeholder = st.empty()
-        full_response = ""
-
-        try:
-            response = client.chat.completions.create(
-                model="deepseek-chat",
-                temperature=0.2,
-                max_tokens=2000,
-                messages=[
-                    {
+            try:
+                response = client.chat.completions.create(
+                    model="deepseek-chat",
+                    temperature=0.2,
+                    max_tokens=2000,
+                    messages=[
+                        {
                         "role": "system",
                         "content": """
 คุณคือ ATM Technical Intelligence AI
