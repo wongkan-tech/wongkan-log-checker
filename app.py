@@ -132,13 +132,13 @@ st.markdown("""
 # --- [ส่วนที่ 3: ส่วนหน้าเว็บโครงสร้างเหล็กขัดเงาจัดเต็ม] ---
 # =========================================================================
 st.markdown('<h1 class="ultra-title">🖥️ ATM LOG INTELLIGENCE SYSTEM</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-text">ศูนย์ประมวลผลและวิเคราะห์รหัสข้อมูลข้ามตู้ธนาคารแบบเรียทามพรีเมียมไฮเอนด์</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-text">ประมวลผลและวิเคราะห์รหัสข้อมูล</p>', unsafe_allow_html=True)
 
 # ย้ายคลังกล่องลิงก์ดาวน์โหลดคู่มือให้สะท้อนเงาสวยงาม
 st.markdown("""
     <div class="folder-link-box">
         🔑 <b>RESOURCE LINK:</b> <a href="https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec`" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">
-        [คลิกเปิดคลังไดรฟ์รวมโฟลเดอร์คู่มือสแกนรหัสทั้งหมดบน OneDrive]
+        [คลิกโหลดคู่มือบน OneDrive]
         </a>
     </div>
 """, unsafe_allow_html=True)
