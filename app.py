@@ -134,16 +134,7 @@ st.markdown("""
 st.markdown('<h1 class="ultra-title">🖥️ ATM LOG INTELLIGENCE SYSTEM</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-text">ระบบวิเคราะห์ไฟลน์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ</p>', unsafe_allow_html=True)
 
-# ย้ายคลังกล่องลิงก์ดาวน์โหลดคู่มือให้สะท้อนเงาสวยงาม
-st.markdown("""
-    <div class="folder-link-box">
-        🔑 <b>RESOURCE LINK:</b> <a href="https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec`" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">
-        [ดาวน์โหลดคู่มือทั้งหมด ผ่าน OneDrive]
-        </a>
-    </div>
-""", unsafe_allow_html=True)
 
-st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 35px;'></div>", unsafe_allow_html=True)
 
 # =========================================================================
 # --- [ส่วนที่ 4: ตัวแปรคลังคำสำคัญและรูปแบบเงื่อนไขสแกนดั้งเดิมของคุณ] ---
@@ -3798,6 +3789,16 @@ with tab1:
                 st.success("🎉 วิเคราะห์ไฟล์ข้อความสำเร็จ!")
             except Exception as e:
                 st.error(f"❌ ไม่สามารถอ่านไฟล์ข้อมูลได้: {e}")
+				# ย้ายคลังกล่องลิงก์ดาวน์โหลดคู่มือให้สะท้อนเงาสวยงาม
+st.markdown("""
+    <div class="folder-link-box">
+        🔑 <b>RESOURCE LINK:</b> <a href="https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec`" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">
+        [ดาวน์โหลดคู่มือทั้งหมด ผ่าน OneDrive]
+        </a>
+    </div>
+""", unsafe_allow_html=True)
+
+st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 35px;'></div>", unsafe_allow_html=True)
 
         # --- ส่วนแสดงผล Dashboard สรุปจำนวนตัวนับ (Counter Cards) ---
         st.markdown("### 📊 สรุปผลการตรวจสอบสถิติ")
