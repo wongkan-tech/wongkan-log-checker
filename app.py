@@ -4,14 +4,97 @@ import zipfile
 import streamlit as st
 import pandas as pd
 
-# --- ตั้งค่าหน้าจอโปรแกรม Streamlit ---
+# --- ตั้งค่าหน้าจอโปรแกรม Streamlit (ของเดิมของคุณ) ---
 st.set_page_config(page_title="Log Analyzer Pro", layout="wide")
 
-st.title("🔍 Log File & Text Analyzer (Streamlit Version)")
-st.write("ระบบวิเคราะห์ไฟล์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ")
+# =========================================================================
+# --- [ส่วนที่ 1: ตกแต่งหน้าตาด้วย Premium Custom CSS (เพิ่มเข้าใหม่เพื่อความสวยงาม)] ---
+# =========================================================================
+st.markdown("""
+    <style>
+    /* 1. พื้นหลังไล่เฉดสีสุดหรู สไตล์ห้องควบคุมระบบการเงิน (Cybersecurity Dashboard) */
+    .stApp {
+        background: radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 60%, #020617 100%);
+        color: #f8fafc;
+        font-family: 'Kanit', 'Inter', sans-serif;
+    }
+    
+    /* 2. ตัวอักษรหัวข้อใหญ่ เรืองแสงและไล่สีแบบนีออน */
+    .main-title {
+        background: linear-gradient(90deg, #38bdf8 0%, #818cf8 50%, #34d399 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+        font-size: 2.6rem;
+        margin-bottom: 5px;
+        letter-spacing: -0.5px;
+        filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.3));
+    }
+    
+    /* 3. กล่องแสดงผลลัพธ์ (Log Card) สไตล์กระจกฝ้าโปร่งแสง มิติลึกโค้งมน */
+    .log-card {
+        background: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+        margin-bottom: 25px;
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    /* แอนิเมชันตอนเอาเมาส์ชี้ที่กล่องให้ยกตัวขึ้น ขอบเรืองแสงสีฟ้า */
+    .log-card:hover {
+        transform: translateY(-6px);
+        border-color: #0ea5e9;
+        box-shadow: 0 30px 60px rgba(14, 165, 233, 0.18);
+    }
+    
+    /* 4. ปรับโฉมปุ่มกดแบบดั้งเดิมของ Streamlit ให้เป็นปุ่ม Cyber Gradient */
+    div.stButton > button {
+        background: linear-gradient(90deg, #0284c7 0%, #4f46e5 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        padding: 14px 28px !important;
+        border-radius: 16px !important;
+        font-weight: 600 !important;
+        font-size: 16px !important;
+        letter-spacing: 0.5px;
+        box-shadow: 0 8px 25px rgba(79, 70, 229, 0.35) !important;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        width: 100%;
+    }
+    /* ลูกเล่นปุ่มกดตอนเมาส์ชี้ */
+    div.stButton > button:hover {
+        background: linear-gradient(90deg, #0ea5e9 0%, #6366f1 100%) !important;
+        transform: scale(1.02) translateY(-2px) !important;
+        box-shadow: 0 12px 30px rgba(99, 102, 241, 0.55) !important;
+    }
+    div.stButton > button:active {
+        transform: scale(0.98) !important;
+    }
 
-# ลิงก์ดาวน์โหลดคู่มือที่หน้าเว็บไม่พังและเปิดได้จริง 100%
-st.markdown("📂 **[คลิกที่นี่เพื่อเปิดโฟลเดอร์ดาวน์โหลดคู่มือทั้งหมด (OneDrive)]** \n  https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec`")
+    /* 5. ตกแต่งกล่องข้อความย่อย */
+    .sub-text {
+        color: #94a3b8;
+        font-size: 15px;
+        margin-bottom: 30px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- [ ส่วนหน้าเว็บจัดวางข้อมูลสไตล์ใหม่ พ่วงคำและลิงก์ของเก่าของคุณเป๊ะๆ ] ---
+st.markdown('<h1 class="main-title">🖥️ ATM Log Intelligence Analyzer</h1>', unsafe_allow_html=True)
+st.markdown('<p class="sub-text">ระบบวิเคราะห์ข้อมูล Log ตู้อัตโนมัติและตรวจจับรหัสข้ามเวลาเวอร์ชันพรีเมียม</p>', unsafe_allow_html=True)
+
+# ลิงก์ดาวน์โหลดคู่มือดั้งเดิมของคุณ
+st.markdown("📂 **[คลิกที่นี่เพื่อเปิดโฟลเดอร์ดาวน์โหลดคู่มือทั้งหมด (OneDrive)]** \n  https://1drv.ms`")
+st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 30px;'></div>", unsafe_allow_html=True)
+
+# =========================================================================
+# --- [ ส่วนข้อมูลตัวแปรระบบค้นหาดั้งเดิมของคุณเป๊ะๆ ] ---
+# =========================================================================
 search_keywords = [
     "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
     "SOLENOIDREJECT", "SOLENOIDRETACK", "SLOTPANELBAAC", "PRINTERBAAC",
@@ -31,11 +114,12 @@ search_keywords = [
     r"\bNF\b", r"\bNT\b"
 ]
 
-# --- ตัวแปรสแกนเงื่อนไขพิเศษ (Error & Code Detector) ---
 ERROR_KEYWORDS = ["ERROR", "ERR", "FAILED", "FAIL", "FAULT", "PAPER FAULT"]
 
-# 🎯 ปรับโครงสร้างเพื่อดักจับโค้ดตัวเลขทุกรูปแบบ (เช่น 12054, -302, 302) แม้ติดเครื่องหมายพิเศษ
 CODE_PATTERN = re.compile(r'-?\d{3,5}')
+
+# ด้านล่างนี้สามารถวาง manual_db = { และฟังก์ชันที่เหลือของคุณรันต่อได้เลยครับ...
+
 
 
 manual_db = {
