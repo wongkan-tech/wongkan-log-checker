@@ -3892,22 +3892,22 @@ for message in st.session_state.messages:
 
 if prompt := st.chat_input("พิมพ์รหัส Error หรือวางข้อความ Log ให้ AI ช่วยวิเคราะห์ที่นี่..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
+    with st.chat_message("user"):
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
-                message_placeholder = st.empty()
-                full_response = ""
-                
-                try:
-                   response = client.chat.completions.create(
-    model="deepseek-chat",
-    temperature=0.2,
-    max_tokens=2000,
-    messages=[
-        {
-            "role": "system",
-            "content": """
+            message_placeholder = st.empty()
+            full_response = ""
+            
+            try:
+                response = client.chat.completions.create(
+                    model="deepseek-chat",
+                    temperature=0.2,
+                    max_tokens=2000,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": """
 คุณคือวิศวกรเทคนิคผู้เชี่ยวชาญระดับสูงด้านการซ่อมบำรุงตู้ ATM ทุกยี่ห้อ
 
 หน้าที่:
@@ -3923,26 +3923,28 @@ if prompt := st.chat_input("พิมพ์รหัส Error หรือวา
 
 ตอบเป็นภาษาไทย ให้ละเอียด ชัดเจน กระชับ และปลอดภัย
 """
-        },
-        *[
-            {
-                "role": m["role"],
-                "content": m["content"]
-            }
-            for m in st.session_state.messages
-        ]
-    ]
-)
-                        stream=False
-                    )
-                    full_response = response.choices.message.content
-                    message_placeholder.markdown(full_response)
-                except Exception as e:
-                    st.error(f"❌ ระบบบริการแชท AI ขัดข้องชั่วคราว: {str(e)}")
-            
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
+                        },
+                        *[
+                            {
+                                "role": m["role"],
+                                "content": m["content"]
+                            }
+                            for m in st.session_state.messages
+                        ]
+                    ],
+                    stream=False
+                )
 
+                full_response = response.choices[0].message.content
+                message_placeholder.markdown(full_response)
 
+            except Exception as e:
+                st.error(f"❌ ระบบบริการแชท AI ขัดข้องชั่วคราว: {str(e)}")
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": full_response
+        })
 
 
             
