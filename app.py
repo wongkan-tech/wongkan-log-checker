@@ -3889,49 +3889,49 @@ for message in st.session_state.messages:
 # เปิดช่องทางพิมพ์แชทตอบโต้ที่ล่างสุดของหน้าจอ
 if user_query := st.chat_input("พิมพ์รหัส Error หรือข้อสงสัยเกี่ยวกับตู้ ATM ตรงนี้ให้ AI ช่วยหาทางออก..."):
     
-    # แสดงคำถามช่างขึ้นจอ
-    with st.chat_message("user"):
-        st.markdown(user_query)
-    st.session_state.messages.append({"role": "user", "content": user_query})
+# แสดงคำถามช่างขึ้นจอ
+with st.chat_message("user"):
+	st.markdown(user_query)
+st.session_state.messages.append({"role": "user", "content": user_query})
 
-    # ตอบคำถามโดย AI
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        message_placeholder.markdown("🤖 *กำลังวิเคราะห์ข้อมูลและค้นหาแนวทางซ่อมแซมสักครู่นะครับ...*")
-        
-        try:
-            # เช็กระบบดึงคีย์ลับเพื่อความปลอดภัย
-            try:
-                CURRENT_GEMINI_KEY = st.secrets["GEMINI_API_KEY"]
-            except Exception:
-                # 📌 หากทดสอบให้ใส่รหัส API Key จริงจาก Google แทนที่ข้อความตรงนี้ได้เลยครับ
-                CURRENT_GEMINI_KEY = "ใส่รหัส_API_KEY_จริงของคุณตรงนี้"
+# ตอบคำถามโดย AI
+with st.chat_message("assistant"):
+	message_placeholder = st.empty()
+	message_placeholder.markdown("🤖 *กำลังวิเคราะห์ข้อมูลและค้นหาแนวทางซ่อมแซมสักครู่นะครับ...*")
+	
+	try:
+		# เช็กระบบดึงคีย์ลับเพื่อความปลอดภัย
+		try:
+			CURRENT_GEMINI_KEY = st.secrets["GEMINI_API_KEY"]
+		except Exception:
+			# 📌 หากทดสอบให้ใส่รหัส API Key จริงจาก Google แทนที่ข้อความตรงนี้ได้เลยครับ
+			CURRENT_GEMINI_KEY = "ใส่รหัส_API_KEY_จริงของคุณตรงนี้"
 
-            # เชื่อมต่อระบบแกนสมองกล
-            client = genai.Client(api_key=CURRENT_GEMINI_KEY)
-            
-            prompt_instruction = f"""
-            คุณคือ 'วิศวกรที่ปรึกษาอาวุโสผู้เชี่ยวชาญกลไกและระบบซอฟต์แวร์ตู้ ATM' ประจำหน้างาน 
-            หน้าที่ของคุณคือช่วยเหลือช่างซ่อมตู้แก้ปัญหาด้านฮาร์ดแวร์ แผงวงจร และเซนเซอร์ ดักจับจุดเสียจากข้อความ Log
-            
-            คำถามหรือข้อผิดพลาดที่ช่างหน้างานกำลังพิมพ์ปรึกษาคุณ: "{user_query}"
-            
-            โปรดตอบกลับเป็นภาษาไทยที่สุภาพ เข้าใจง่าย คุยเป็นกันเองแบบช่างซ่อมวิศวกรด้วยกัน โดยปฏิบัติตามเกณฑ์:
-            1. บอกสาเหตุที่เป็นไปได้ของกลไกหรือฮาร์ดแวร์ตัวนั้น (เช่น มอเตอร์ติดขัด, เซนเซอร์เลอะคราบฝุ่น, บอร์ดสื่อสารหลุดหลวม)
-            2. แนะนำขั้นตอนแก้ปัญหาหน้างานเป็นข้อๆ (Step-by-Step) ชัดเจน เพื่อให้ช่างลงมือปฏิบัติทำตามและเคลียร์งานซ่อมได้อย่างรวดเร็ว ปลอดภัย
-            """
-            
-            response = client.models.generate_content(
-                model='gemini-1.5-flash',
-                contents=prompt_instruction,
-            )
-            
-            ai_response = response.text
-            message_placeholder.markdown(ai_response)
-            st.session_state.messages.append({"role": "assistant", "content": ai_response})
-            
-        except Exception as e:
-            message_placeholder.markdown(f"❌ ระบบบริการแชท AI ขัดข้องชั่วคราว: {str(e)}")
+		# เชื่อมต่อระบบแกนสมองกล
+		client = genai.Client(api_key=CURRENT_GEMINI_KEY)
+		
+		prompt_instruction = f"""
+		คุณคือ 'วิศวกรที่ปรึกษาอาวุโสผู้เชี่ยวชาญกลไกและระบบซอฟต์แวร์ตู้ ATM' ประจำหน้างาน 
+		หน้าที่ของคุณคือช่วยเหลือช่างซ่อมตู้แก้ปัญหาด้านฮาร์ดแวร์ แผงวงจร และเซนเซอร์ ดักจับจุดเสียจากข้อความ Log
+		
+		คำถามหรือข้อผิดพลาดที่ช่างหน้างานกำลังพิมพ์ปรึกษาคุณ: "{user_query}"
+		
+		โปรดตอบกลับเป็นภาษาไทยที่สุภาพ เข้าใจง่าย คุยเป็นกันเองแบบช่างซ่อมวิศวกรด้วยกัน โดยปฏิบัติตามเกณฑ์:
+		1. บอกสาเหตุที่เป็นไปได้ของกลไกหรือฮาร์ดแวร์ตัวนั้น (เช่น มอเตอร์ติดขัด, เซนเซอร์เลอะคราบฝุ่น, บอร์ดสื่อสารหลุดหลวม)
+		2. แนะนำขั้นตอนแก้ปัญหาหน้างานเป็นข้อๆ (Step-by-Step) ชัดเจน เพื่อให้ช่างลงมือปฏิบัติทำตามและเคลียร์งานซ่อมได้อย่างรวดเร็ว ปลอดภัย
+		"""
+		
+		response = client.models.generate_content(
+			model='gemini-1.5-flash',
+			contents=prompt_instruction,
+		)
+		
+		ai_response = response.text
+		message_placeholder.markdown(ai_response)
+		st.session_state.messages.append({"role": "assistant", "content": ai_response})
+		
+	except Exception as e:
+		message_placeholder.markdown(f"❌ ระบบบริการแชท AI ขัดข้องชั่วคราว: {str(e)}")
 
             
 
