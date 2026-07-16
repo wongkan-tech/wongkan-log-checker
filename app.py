@@ -3790,15 +3790,15 @@ with tab1:
             except Exception as e:
                 st.error(f"❌ ไม่สามารถอ่านไฟล์ข้อมูลได้: {e}")
 				# ย้ายคลังกล่องลิงก์ดาวน์โหลดคู่มือให้สะท้อนเงาสวยงาม
-st.markdown("""
-    <div class="folder-link-box">
-        🔑 <b>RESOURCE LINK:</b> <a href="https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec`" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">
-        [ดาวน์โหลดคู่มือทั้งหมด ผ่าน OneDrive]
-        </a>
-    </div>
-""", unsafe_allow_html=True)
+        st.markdown("""
+           <div class="folder-link-box">
+        🔑    <b>RESOURCE LINK:</b> <a href="https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec`" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">
+               [ดาวน์โหลดคู่มือทั้งหมด ผ่าน OneDrive]
+               </a>
+               </div>
+               """, unsafe_allow_html=True)
 
-st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 35px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 35px;'></div>", unsafe_allow_html=True)
 
         # --- ส่วนแสดงผล Dashboard สรุปจำนวนตัวนับ (Counter Cards) ---
         st.markdown("### 📊 สรุปผลการตรวจสอบสถิติ")
