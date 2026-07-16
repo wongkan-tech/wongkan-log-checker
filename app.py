@@ -4037,6 +4037,53 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+# =========================================================================
+# --- [แก้ไขเพิ่มเติม: แต่งหน้ากากโซนแชท AI ด้านล่างให้สวยงามหรูหรา สบายตา] ---
+# =========================================================================
+st.markdown("""
+<style>
+    /* 🎯 ปรับแต่งกล่องแชทข้อความของ AI (Assistant) ให้เป็นสีฟ้านมพาสเทล ดูนุ่มนวล */
+    div[data-testid="stChatMessage"]:has(span[data-testid="stChatMessageAssistant"]) {
+        background-color: #eff6ff !important;
+        border-left: 5px solid #2563eb !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
+        margin-bottom: 15px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+    }
+
+    /* 🎯 ปรับแต่งกล่องแชทข้อความของ ช่างหน้างาน (User) ให้เป็นสีเทาอ่อนนุ่ม แยกแยะชัดเจน */
+    div[data-testid="stChatMessage"]:has(span[data-testid="stChatMessageUser"]) {
+        background-color: #f1f5f9 !important;
+        border-left: 5px solid #64748b !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
+        margin-bottom: 15px !important;
+    }
+
+    /* 🎯 บังคับข้อความที่ AI ตอบมาด้านในแชทให้เป็นสีเขียวเข้มสไตล์ Technical ตามที่คุณชอบ */
+    div[data-testid="stChatMessage"] .stMarkdown p, 
+    div[data-testid="stChatMessage"] .stMarkdown li {
+        color: #166534 !important; /* ย้อมสีคำตอบ AI เป็นสีเขียวเข้มลึก อ่านง่ายชัดเจนบนพื้นพาสเทล */
+        font-size: 15.5px !important;
+    }
+
+    /* 🎯 ปรับโฉมช่องพิมพ์แชทด้านล่างสุดให้มีมิติ มีขอบมนสวยงาม ไม่แบนราบ */
+    div[data-testid="stChatInput"] {
+        border: 2px solid #3b82f6 !important;
+        border-radius: 16px !important;
+        background-color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08) !important;
+        padding: 4px !important;
+    }
+
+    /* ตัวหนังสือป้ายคำเตือนด้านบนช่องแชท ให้เข้มเด่นขึ้น */
+    .stChatInputContainer p {
+        color: #475569 !important;
+        font-weight: 500 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
             
 
