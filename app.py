@@ -3875,16 +3875,14 @@ from openai import OpenAI
 
 DEEPSEEK_API_KEY = st.secrets.get("DEEPSEEK_API_KEY")
 
-st.markdown("### 🤖 ศูนย์แชทอัจฉริยะวิเคราะห์เคสซ่อมตู้ ATM (Powered by DeepSeek)")
-
 if not DEEPSEEK_API_KEY:
-    st.error("❌ ไม่พบรหัส DEEPSEEK_API_KEY ในระบบหลังบ้าน (Secrets) กรุณาตรวจสอบอีกครั้ง")
-else:
-        client = OpenAI(
-            api_key=DEEPSEEK_API_KEY,
-            base_url="https://api.deepseek.com"
-        )
+    st.error("ไม่พบ DEEPSEEK_API_KEY กรุณาตรวจสอบ secrets.toml")
+    st.stop()
 
+client = OpenAI(
+    api_key=DEEPSEEK_API_KEY,
+    base_url="https://api.deepseek.com"
+)
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
