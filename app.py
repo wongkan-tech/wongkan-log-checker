@@ -3869,187 +3869,333 @@ st.markdown("""
 st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 35px;'></div>", unsafe_allow_html=True)
 
 # =========================================================================
-# --- [ส่วนสุดท้าย: ศูนย์เชื่อมต่อสมองอัจฉริยะ DeepSeek API โหมดฟรีตลอดชีพ] ---
 # =========================================================================
+# --- [ส่วน AI ใหม่ : ATM Technical Intelligence AI]
+# --- ตอนที่ 1/4 : เชื่อมต่อ DeepSeek + ระบบ Session
+# =========================================================================
+
 from openai import OpenAI
 
 DEEPSEEK_API_KEY = st.secrets.get("DEEPSEEK_API_KEY")
 
 if not DEEPSEEK_API_KEY:
-    st.error("ไม่พบ DEEPSEEK_API_KEY กรุณาตรวจสอบ secrets.toml")
+    st.error("❌ ไม่พบ DEEPSEEK_API_KEY กรุณาตรวจสอบ secrets.toml")
     st.stop()
+
 
 client = OpenAI(
     api_key=DEEPSEEK_API_KEY,
     base_url="https://api.deepseek.com"
 )
+
+
+# ===============================
+# สร้างพื้นที่จำข้อมูลของ Chat
+# ===============================
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+
+if "current_prompt" not in st.session_state:
+    st.session_state.current_prompt = ""
+
+
+if "manual_result" not in st.session_state:
+    st.session_state.manual_result = ""
+
+
+if "ai_answer" not in st.session_state:
+    st.session_state.ai_answer = ""
+
+
+# ===============================
+# แสดงประวัติการสนทนาเดิม
+# ===============================
+
 for message in st.session_state.messages:
+
     with st.chat_message(message["role"]):
-                	st.markdown(message["content"])
+        st.markdown(message["content"])
 
-if prompt := st.chat_input("พิมพ์รหัส Error หรือวางข้อความ Log ให้ AI ช่วยวิเคราะห์ที่นี่..."):
 
-    st.session_state.messages.append({
-        "role": "user",
-        "content": prompt
-    })
+# ===============================
+# ช่องรับข้อความจากช่าง
+# ===============================
+
+prompt = st.chat_input(
+    "พิมพ์ Error Code หรือวาง Log ATM เพื่อวิเคราะห์..."
+)
+
+
+if prompt:
+
+    st.session_state.current_prompt = prompt
+
+    st.session_state.messages.append(
+        {
+            "role": "user",
+            "content": prompt
+        }
+    )
+
 
     with st.chat_message("user"):
         st.markdown(prompt)
+		# =========================================================================
+# --- ตอนที่ 2/4 : ค้นหา Manual DB ก่อน (ใช้ฟรี)
+# =========================================================================
+
+if prompt:
+
+    matches = []
+
+    prompt_lower = prompt.lower()
+
+
+    # ===============================
+    # ค้นหาใน manual_db
+    # ===============================
+
+    if "manual_db" in globals():
+
+        for key, value in manual_db.items():
+
+            key_text = str(key).lower()
+            value_text = str(value).lower()
+
+            if (
+                key_text in prompt_lower
+                or prompt_lower in key_text
+                or prompt_lower in value_text
+            ):
+
+                matches.append(
+                    f"📌 **รหัส / คำสำคัญ : {key}**\n\n{value}"
+                )
+
+
+    # ===============================
+    # ถ้าพบข้อมูลจากคู่มือ
+    # ===============================
+
+    if matches:
+
+        st.session_state.manual_result = (
+            "## 🔍 พบข้อมูลจาก Manual Database\n\n"
+            + "\n\n----------------------\n\n".join(matches)
+        )
+
+
+    else:
+
+        st.session_state.manual_result = (
+            "❌ ไม่พบข้อมูลตรงกับฐานข้อมูล Manual"
+        )
+
+
+    # แสดงผลจาก DB
 
     with st.chat_message("assistant"):
 
-        message_placeholder = st.empty()
-        full_response = ""
+        st.markdown(
+            st.session_state.manual_result
+        )
 
-        try:
-            response = client.chat.completions.create(
-                model="deepseek-chat",
-                temperature=0.2,
-                max_tokens=2000,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """
+
+    # ===============================
+    # เก็บผล DB เข้า History
+    # ===============================
+
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": st.session_state.manual_result
+        }
+    )
+	# =========================================================================
+# --- ตอนที่ 3/4 : ปุ่มวิเคราะห์ด้วย AI (เรียก DeepSeek เมื่อกดเท่านั้น)
+# =========================================================================
+
+if st.session_state.current_prompt:
+
+    st.markdown("---")
+
+    ai_button = st.button(
+        "🤖 วิเคราะห์เพิ่มเติมด้วย AI",
+        key="deepseek_analyze_button"
+    )
+
+
+    if ai_button:
+
+        with st.chat_message("assistant"):
+
+            message_placeholder = st.empty()
+
+            try:
+
+                response = client.chat.completions.create(
+
+                    model="deepseek-chat",
+
+                    temperature=0.2,
+
+                    max_tokens=2000,
+
+                    messages=[
+
+                        {
+                            "role": "system",
+
+                            "content": """
 คุณคือ ATM Technical Intelligence AI
-เป็นวิศวกร Technical Support ระดับ Senior ที่เชี่ยวชาญระบบ ATM ทุกยี่ห้อ เช่น NCR, Diebold, Hyosung และระบบ Windows Embedded
+
+เป็นวิศวกร Technical Support ระดับ Senior
+เชี่ยวชาญ ATM ทุกยี่ห้อ เช่น NCR, Diebold, Hyosung
 
 หน้าที่:
-- วิเคราะห์ Log ATM
 - วิเคราะห์ Error Code
-- วิเคราะห์ Event Viewer
-- วิเคราะห์ปัญหา Hardware และ Software
-- วิเคราะห์ Root Cause ของปัญหา
-- แนะนำขั้นตอนตรวจสอบสำหรับ Technician หน้างาน
-- อ้างอิงจากคู่มือและฐานข้อมูลเคสซ่อมเมื่อมีข้อมูล
+- วิเคราะห์ Log ATM
+- วิเคราะห์สาเหตุ Root Cause
+- แนะนำขั้นตอนตรวจสอบสำหรับ Technician
 
 รูปแบบคำตอบ:
-1. 🔍 สรุปอาการปัญหา
-2. 🧠 วิเคราะห์สาเหตุที่เป็นไปได้
-3. 🛠 จุดที่ต้องตรวจสอบ
-4. 🔧 วิธีแก้ไขทีละขั้นตอน
+
+1. 🔍 สรุปอาการ
+2. 🧠 วิเคราะห์สาเหตุ
+3. 🛠 จุดตรวจสอบ
+4. 🔧 วิธีแก้ไข
 5. ⚠️ ข้อควรระวัง
-6. 📊 ระดับความมั่นใจในการวิเคราะห์
+6. 📊 ระดับความมั่นใจ
 
-หลักการตอบ:
-- ตอบเป็นภาษาไทย
-- ใช้ภาษาช่างเทคนิค เข้าใจง่าย
-- ไม่เดาสุ่ม ถ้าข้อมูลไม่พอให้แจ้งสิ่งที่ต้องตรวจเพิ่ม
-- ให้ความสำคัญกับความปลอดภัยของระบบ ATM
+ตอบภาษาไทย
+ใช้ภาษาช่างเทคนิค
+ถ้าข้อมูลไม่พอให้แจ้งสิ่งที่ต้องตรวจเพิ่ม
 """
-                    },
-                    *[
+                        },
+
+
                         {
-                            "role": m["role"],
-                            "content": m["content"]
+                            "role": "user",
+
+                            "content": f"""
+คำถามจากช่าง:
+
+{st.session_state.current_prompt}
+
+
+ข้อมูลจาก Manual Database:
+
+{st.session_state.manual_result}
+
+
+กรุณาวิเคราะห์เพิ่มเติม
+"""
                         }
-                        for m in st.session_state.messages
+
                     ]
-                ]
-            )
 
-            full_response = response.choices[0].message.content
-
-            message_placeholder.markdown(full_response)
-
-        except Exception as e:
-            full_response = f"เกิดข้อผิดพลาด: {str(e)}"
-            st.error(f"❌ ระบบบริการแชท AI ขัดข้องชั่วคราว: {str(e)}")
+                )
 
 
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": full_response
-    })
+                ai_response = response.choices[0].message.content
+
+
+                message_placeholder.markdown(
+                    ai_response
+                )
+
+
+                st.session_state.messages.append(
+
+                    {
+                        "role": "assistant",
+                        "content": ai_response
+                    }
+
+                )
+
+
+            except Exception as e:
+
+                message_placeholder.error(
+                    f"❌ AI Error : {str(e)}"
+                )
+				# =========================================================================
+# --- ตอนที่ 4/4 : ตกแต่งหน้าตา Chat AI
+# =========================================================================
+
 st.markdown("""
 <style>
-    /* 🎯 ตัวหนังสือในกล่องพิมพ์แชทและช่องค้นหาเป็นสีดำเข้ม ช่างมองเห็นชัดเจน */
-    div[data-testid="stChatInput"] textarea,
-    div[data-testid="stTextInput"] input,
-    .stTextInput input,
-    .stChatInput textarea {
+
+    /* ช่องพิมพ์ Chat */
+    div[data-testid="stChatInput"] textarea {
+
         color: #111827 !important;
         -webkit-text-fill-color: #111827 !important;
         background-color: #ffffff !important;
-    }
-</style>
-""", unsafe_allow_html=True)
 
-# =========================================================================
-# --- [แก้ไขเพิ่มเติม: เปลี่ยนตัวหนังสือทั่วไปและในตารางเป็นสีเขียวเทคนิคชัดเจน] ---
-# =========================================================================
-st.markdown("""
-<style>
-    /* 🎯 เปลี่ยนข้อความเนื้อหาทั่วไป และรายการสัญลักษณ์ให้เป็นสีเขียวเข้มอ่านง่าย */
-    .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span {
-        color: #0d6efd !important; /* ย้อมสีข้อความหลัก */
-        color: #15803d !important; /* สีเขียวเข้มสไตล์หน้าจอ Terminal บนพื้นขาว */
     }
 
-    /* 🎯 บังคับตัวหนังสือทุกช่องในตาราง Log ขวาสุดให้โผล่เป็นสีเขียวเข้มชัดเจน ไม่เป็นสีขาวแล้ว */
-    .stDataFrame td, .stDataFrame th, table td, table th, code, pre {
-        color: #166534 !important; /* สีเขียวเข้มลึก คมชัดบนพื้นขาว */
-        -webkit-text-fill-color: #166534 !important;
-    }
-    
-    /* คงสีหัวข้อหลักให้ตัดกันสวยงาม */
-    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
-        color: #16a34a !important; /* หัวข้อสีเขียวสว่างขึ้นมาเล็กน้อย */
-        font-weight: bold !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-# =========================================================================
-# --- [แก้ไขเพิ่มเติม: แต่งหน้ากากโซนแชท AI ด้านล่างให้สวยงามหรูหรา สบายตา] ---
-# =========================================================================
-st.markdown("""
-<style>
-    /* 🎯 ปรับแต่งกล่องแชทข้อความของ AI (Assistant) ให้เป็นสีฟ้านมพาสเทล ดูนุ่มนวล */
-    div[data-testid="stChatMessage"]:has(span[data-testid="stChatMessageAssistant"]) {
-        background-color: #eff6ff !important;
-        border-left: 5px solid #2563eb !important;
+
+    /* กล่องข้อความ AI */
+
+    div[data-testid="stChatMessage"] {
+
         border-radius: 12px !important;
-        padding: 15px !important;
-        margin-bottom: 15px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+        padding: 12px !important;
+        margin-bottom: 12px !important;
+
     }
 
-    /* 🎯 ปรับแต่งกล่องแชทข้อความของ ช่างหน้างาน (User) ให้เป็นสีเทาอ่อนนุ่ม แยกแยะชัดเจน */
-    div[data-testid="stChatMessage"]:has(span[data-testid="stChatMessageUser"]) {
-        background-color: #f1f5f9 !important;
-        border-left: 5px solid #64748b !important;
-        border-radius: 12px !important;
-        padding: 15px !important;
-        margin-bottom: 15px !important;
-    }
 
-    /* 🎯 บังคับข้อความที่ AI ตอบมาด้านในแชทให้เป็นสีเขียวเข้มสไตล์ Technical ตามที่คุณชอบ */
-    div[data-testid="stChatMessage"] .stMarkdown p, 
+    /* ข้อความ AI */
+
+    div[data-testid="stChatMessage"] .stMarkdown p,
     div[data-testid="stChatMessage"] .stMarkdown li {
-        color: #166534 !important; /* ย้อมสีคำตอบ AI เป็นสีเขียวเข้มลึก อ่านง่ายชัดเจนบนพื้นพาสเทล */
-        font-size: 15.5px !important;
+
+        color: #166534 !important;
+        font-size: 15px !important;
+
     }
 
-    /* 🎯 ปรับโฉมช่องพิมพ์แชทด้านล่างสุดให้มีมิติ มีขอบมนสวยงาม ไม่แบนราบ */
-    div[data-testid="stChatInput"] {
-        border: 2px solid #3b82f6 !important;
-        border-radius: 16px !important;
-        background-color: #ffffff !important;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08) !important;
-        padding: 4px !important;
+
+    /* ปุ่ม AI */
+
+    div.stButton > button {
+
+        background: linear-gradient(
+            135deg,
+            #2563eb,
+            #06b6d4
+        ) !important;
+
+        color: white !important;
+
+        border-radius: 15px !important;
+
+        font-weight: bold !important;
+
+        padding: 12px 25px !important;
+
     }
 
-    /* ตัวหนังสือป้ายคำเตือนด้านบนช่องแชท ให้เข้มเด่นขึ้น */
-    .stChatInputContainer p {
-        color: #475569 !important;
-        font-weight: 500 !important;
+
+    div.stButton > button:hover {
+
+        transform: scale(1.03);
+
     }
+
+
 </style>
 """, unsafe_allow_html=True)
 
+
+# =========================================================================
+# --- จบระบบ ATM Technical Intelligence AI
+# =========================================================================
             
 
 
