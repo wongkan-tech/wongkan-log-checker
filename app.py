@@ -1,162 +1,172 @@
-import io
-import os
 import re
+import os
 import zipfile
-from typing import Any
-
-import pandas as pd
 import streamlit as st
-from openpyxl import load_workbook
-from openpyxl.styles import Alignment
-from openpyxl.utils import get_column_letter
+import pandas as pd
+from openai import OpenAI
 
-try:
-    from openai import OpenAI
-except ImportError:
-    OpenAI = None
+# =========================================================================
+# --- [ส่วนที่ 1: ตั้งค่าหน้าจอโปรแกรม Streamlit แบบไร้ขอบกว้างเต็มพิกัด] ---
+# =========================================================================
+st.set_page_config(page_title="ATM Log Intelligence Center", layout="wide")
 
-
-st.set_page_config(
-    page_title="ATM Technical Intelligence",
-    page_icon="🖥️",
-    layout="wide",
-)
-
-st.markdown(
-    """
+# =========================================================================
+# --- [ส่วนที่ 2: มหากาพย์ CSS ดีไซน์ระดับโลก (Advanced Cyber Metallic Neon) ⭐⭐⭐⭐⭐] ---
+# =========================================================================
+st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
-
+    /* นำเข้าฟอนต์ Google Fonts เพื่อความพรีเมียม */
+    @import url('https://googleapis.com');
+	
+	/* 1. มิติพื้นหลังห้องคอนโทรลรูมข้ามจักรวาล (Deep Space Void Grid) */
     .stApp {
         background-color: #030712;
-        background-image:
+        background-image: 
             radial-gradient(at 0% 0%, rgba(31, 41, 234, 0.12) 0px, transparent 50%),
-            radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.10) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%),
             radial-gradient(at 50% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%);
         color: #f3f4f6;
-        font-family: 'Kanit', sans-serif;
+        font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
     }
-	/* แก้ช่องพิมพ์ให้เห็นข้อความชัดเจน */
-div[data-baseweb="input"] {
-    background-color: #ffffff !important;
-}
-
-div[data-baseweb="input"] input {
-    color: #111827 !important;
-    -webkit-text-fill-color: #111827 !important;
-    caret-color: #111827 !important;
-}
-
-/* แก้ช่องข้อความหลายบรรทัด */
-div[data-baseweb="textarea"] textarea {
-    color: #111827 !important;
-    -webkit-text-fill-color: #111827 !important;
-    caret-color: #111827 !important;
-    background-color: #ffffff !important;
-}
-
-/* สีข้อความตัวอย่างก่อนพิมพ์ */
-div[data-baseweb="input"] input::placeholder,
-div[data-baseweb="textarea"] textarea::placeholder {
-    color: #6b7280 !important;
-    -webkit-text-fill-color: #6b7280 !important;
-    opacity: 1 !important;
-}
-/* บังคับให้ช่องพิมพ์ทุกชนิดเห็นตัวอักษร */
-.stTextInput input,
-.stTextArea textarea,
-[data-testid="stTextInput"] input,
-[data-testid="stTextArea"] textarea,
-div[data-baseweb="input"] input,
-div[data-baseweb="textarea"] textarea {
-    color: #000000 !important;
-    -webkit-text-fill-color: #000000 !important;
-    background-color: #ffffff !important;
-    caret-color: #000000 !important;
-    opacity: 1 !important;
-    font-size: 16px !important;
-}
-
-/* พื้นหลังชั้นนอกของช่อง */
-[data-testid="stTextInput"] div[data-baseweb="input"],
-[data-testid="stTextArea"] div[data-baseweb="textarea"] {
-    background-color: #ffffff !important;
-}
-
-/* ข้อความตัวอย่างในช่อง */
-.stTextInput input::placeholder,
-.stTextArea textarea::placeholder {
-    color: #666666 !important;
-    -webkit-text-fill-color: #666666 !important;
-    opacity: 1 !important;
-}
-
-/* ป้องกันตอนคลิกหรือโฟกัสแล้วข้อความหาย */
-.stTextInput input:focus,
-.stTextArea textarea:focus {
-    color: #000000 !important;
-    -webkit-text-fill-color: #000000 !important;
-    background-color: #ffffff !important;
-}
-
+    
+    /* 2. หัวข้อพรีเมียมสามมิติแบบ Dynamic Chroma Text */
     .ultra-title {
         background: linear-gradient(135deg, #38bdf8 10%, #6366f1 50%, #34d399 90%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 800;
         font-size: 3.2rem;
-        letter-spacing: -1px;
+        letter-spacing: -1.5px;
         margin-bottom: 2px;
         filter: drop-shadow(0 4px 12px rgba(99, 102, 241, 0.35));
     }
-
-    .sub-text {
-        color: #9ca3af;
-        font-size: 16px;
+    
+    /* 3. ยกระดับกล่องการ์ดแนวเหล็กกล้ากระจกเงา (Chrono Cyber Card) */
+    .log-card {
+        background: linear-gradient(145deg, rgba(15, 23, 42, 0.75) 0%, rgba(3, 7, 18, 0.9) 100%);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 28px;
+        padding: 32px;
+        margin-bottom: 28px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 
+            0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+            0 2px 4px -1px rgba(0, 0, 0, 0.06),
+            inset 0 1px 1px rgba(255, 255, 255, 0.1);
+        transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* โครงขอบเรืองแสงไฟวิ่งนีออนตัดขั้วเวลาวางเมาส์ชี้ (Neon Border Explosion) */
+    .log-card:hover {
+        transform: translateY(-8px) scale(1.005);
+        border-color: rgba(99, 102, 241, 0.5);
+        box-shadow: 
+            0 30px 60px -15px rgba(3, 7, 18, 0.9), 
+            0 0 30px 0 rgba(99, 102, 241, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    
+    /* แถบไฟนีออนวิ่งจำลองแอบซ่อนอยู่ข้างกล่อง */
+    .log-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 4px; height: 100%;
+        background: linear-gradient(to bottom, #38bdf8, #6366f1);
+        border-radius: 4px 0 0 4px;
     }
 
-    div.stButton > button,
-    div.stDownloadButton > button {
+    /* 4. แปลงโฉมปุ่มกดเป็นบล็อกเหล็กสลักแสงเรือง (Liquid Holographic Button) */
+    div.stButton > button {
         background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%) !important;
         color: #ffffff !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 16px !important;
-        font-weight: 700 !important;
-        padding: 10px 20px !important;
+        padding: 16px 32px !important;
+        border-radius: 20px !important;
+        font-weight: 800 !important;
+        font-size: 17px !important;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4) !important;
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        position: relative;
+    }
+    div.stButton > button:hover {
+        background: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%) !important;
+        transform: translateY(-3px) scale(1.02) !important;
+        box-shadow: 
+            0 20px 35px -5px rgba(79, 70, 229, 0.6),
+            0 0 25px rgba(34, 211, 238, 0.4) !important;
+        letter-spacing: 1.5px;
+    }
+    div.stButton > button:active {
+        transform: translateY(-1px) scale(0.98) !important;
     }
 
-    div[data-testid="stChatInput"] textarea {
-        color: #111827 !important;
-        -webkit-text-fill-color: #111827 !important;
-        background-color: #ffffff !important;
-    }
-
+    /* 5. ลิงก์ดาวน์โหลดสุดเท่ แยกกล่องออกมาเป็นยานแม่ */
     .folder-link-box {
         background: rgba(30, 41, 59, 0.3);
         border: 1px dashed rgba(56, 189, 248, 0.3);
         border-radius: 16px;
         padding: 16px;
         margin-top: 15px;
-        margin-bottom: 25px;
+        margin-bottom: 30px;
+        transition: all 0.3s;
+    }
+    .folder-link-box:hover {
+        background: rgba(56, 189, 248, 0.05);
+        border-color: #38bdf8;
+    }
+
+    /* ตกแต่งคำบรรยาย */
+    .sub-text {
+        color: #9ca3af;
+        font-size: 16px;
+        letter-spacing: 0.2px;
     }
     </style>
-    """,
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
-st.markdown('<h1 class="ultra-title">🖥️ ATM Technical Intelligence</h1>', unsafe_allow_html=True)
-st.markdown(
-    '<p class="sub-text">ระบบวิเคราะห์ Log ATM และจัดรูปแบบรายงาน Excel สำหรับส่งธนาคาร</p>',
-    unsafe_allow_html=True,
-)
+# =========================================================================
+# --- [ส่วนที่ 3: ส่วนหน้าเว็บโครงสร้างเหล็กขัดเงาจัดเต็ม] ---
+# =========================================================================
+st.markdown('<h1 class="ultra-title">🖥️  ATM Technical Intelligence</h1>', unsafe_allow_html=True)
+st.markdown('<p class="sub-text">ระบบวิเคราะห์ไฟลน์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ</p>', unsafe_allow_html=True)
+
 
 
 # =========================================================================
-# MANUAL DATABASE
-# วางข้อมูล DB เพิ่มเติมภายในวงเล็บปีกกาคู่นี้ได้ โดยคั่นแต่ละรายการด้วยเครื่องหมายจุลภาค
+# --- [ส่วนที่ 4: ตัวแปรคลังคำสำคัญและรูปแบบเงื่อนไขสแกนดั้งเดิมของคุณ] ---
 # =========================================================================
-manual_db: dict[str, str] = {
-    "10101": "ATMSNcontrol unit Parametererror Ignore None -> พารามิเตอร์ผิดพลาด (ระบบควบคุม ATM SN) ระบบให้ข้ามไปได้ ไม่ต้องดำเนินการใด ๆ",
+search_keywords = [
+    "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
+    "SOLENOIDREJECT", "SOLENOIDRETACK", "SLOTPANELBAAC", "PRINTERBAAC",
+    "POWERBAAC", "LONGKEYBAAC", "LCDREARBAAC", "CASSETTEBAAC", "REJECTBAAC",
+    "STACKGUIDE", "EPPBAAC", "LCDBAAC", "CCRBAAC", "SAFEBAAC", "UPSESSCO", "PAPER FAULT",
+    "BATTERY", "NPLONG", "PCGSB", "IOBAAC", "NPSHORT", "PC572", "PC587",
+    "STACK", "CHIP", "SSD", "CIS", "MTS", "EXSHUTTER",
+    "FEEL DISTRIBUTION COMMAND FILE: REBOOT", "NETWORK DISCONNECTED", 
+    "TAKE NOTES TIMEOUT", "UPPER DOOR OPENED", "SAFE DOOR OPENED", 
+    "MAINTENANCE MODE", "UNKNOWN NOTES IS", "UPS IS POWERING",
+    "POWERFAILURE", "REJECT BOX FULL", "NETWORK LOST", "OFFLINE MODE", 
+    "RETRACT NOTES", "POWERUP MODE", "RETAINCARD", "BARCODE ERROR",
+    "MASTERBAAC", "MASTERGSB", "MASTERGHB", "MASTERBOC", "MASTERIBC",
+    "CARD RETAINED", "CARD RETAIN", "OTHER REASON", "RETRACT FLAG", 
+    "TIME OUT", "ALARM IS ON", "ERROR", "ERR", "FAILED", "FAIL", "FAULT", 
+    "-14", "-12", "-13",
+    r"\bNF\b", r"\bNT\b"
+]
+
+ERROR_KEYWORDS = ["ERROR", "ERR", "FAILED", "FAIL", "FAULT", "PAPER FAULT"]
+CODE_PATTERN = re.compile(r'-?\d{3,5}')
+
+
+
+
+manual_db = {
+        "10101": "ATMSNcontrol unit Parametererror Ignore None -> พารามิเตอร์ผิดพลาด (ระบบควบคุม ATM SN) ระบบให้ข้ามไปได้ ไม่ต้องดำเนินการใด ๆ",
         "10102": "ATMSNcontrol unit NolegalATMsequence number WriteasATMserialnumber None -> ไม่พบหมายเลขลำดับ ATM ที่ถูกต้อง ระบบจะบันทึกเป็นหมายเลขซีเรียลของตู้ ATM แทน",
         "10103": "ATMSNcontrol unit Failtooperatetheregistry Checktheoperationauthority None -> ไม่สามารถแก้ไขค่าใน Registry ได้ ให้ตรวจสอบสิทธิ์การเข้าถึงระบบ (Authority)",
         "10104": "ATMSNcontrol unit DLL executionerror Checkthestatusofrelative module None -> การรันไฟล์ DLL ผิดพลาด ให้ตรวจสอบสถานะของโมดูลที่เกี่ยวข้อง",
@@ -3597,468 +3607,610 @@ manual_db: dict[str, str] = {
         "STACKGUIDE": "603010310001-GA STACKING GUIDE ROLLER FIXING FRAMEASSY",
         "CHIP": "502019975 CONTACT ASSY CRT-350N หัวชิบการ์ด",
         "PAPER FAULT": "USB communication error ErrCode 1375"
+		}
+# =========================================================================
+# --- [ส่วนที่ 3: ระบบประมวลผลดั้งเดิม ปรับปรุงฟังก์ชันตรวจจับโค้ดข้ามเวลาตัวเก่งล่าสุด] ---
+# =========================================================================
 
-}
-
-
-SEARCH_KEYWORDS = [
-    "MAINCONTROLBAAC", "MAINCONTROLGSB", "CAMERASHUTTERBAAC", "CAMERAFACEBAAC",
-    "SOLENOIDREJECT", "SOLENOIDRETACK", "SLOTPANELBAAC", "PRINTERBAAC",
-    "POWERBAAC", "LONGKEYBAAC", "LCDREARBAAC", "CASSETTEBAAC", "REJECTBAAC",
-    "STACKGUIDE", "EPPBAAC", "LCDBAAC", "CCRBAAC", "SAFEBAAC", "UPSESSCO",
-    "PAPER FAULT", "BATTERY", "NPLONG", "PCGSB", "IOBAAC", "NPSHORT",
-    "PC572", "PC587", "STACK", "CHIP", "SSD", "CIS", "MTS", "EXSHUTTER",
-    "FEEL DISTRIBUTION COMMAND FILE: REBOOT", "NETWORK DISCONNECTED",
-    "TAKE NOTES TIMEOUT", "UPPER DOOR OPENED", "SAFE DOOR OPENED",
-    "MAINTENANCE MODE", "UNKNOWN NOTES IS", "UPS IS POWERING", "POWERFAILURE",
-    "REJECT BOX FULL", "NETWORK LOST", "OFFLINE MODE", "RETRACT NOTES",
-    "POWERUP MODE", "RETAINCARD", "BARCODE ERROR", "MASTERBAAC", "MASTERGSB",
-    "MASTERGHB", "MASTERBOC", "MASTERIBC", "CARD RETAINED", "CARD RETAIN",
-    "OTHER REASON", "RETRACT FLAG", "TIME OUT", "ALARM IS ON", "ERROR", "ERR",
-    "FAILED", "FAIL", "FAULT", "-14", "-12", "-13", r"\bNF\b", r"\bNT\b",
-]
-
-ERROR_KEYWORDS = ("ERROR", "ERR", "FAILED", "FAIL", "FAULT", "PAPER FAULT")
-CODE_PATTERN = re.compile(r"(?<![\d:])-?\d{3,5}(?![\d:])")
-
-
-def clean_text(value: Any) -> str:
-    if value is None:
-        return ""
-    return " ".join(str(value).replace("\r", " ").replace("\n", " ").split()).strip()
-
-
-def ensure_prefix(text: str, prefix: str, fallback: str = "") -> str:
-    value = clean_text(text)
-    if not value:
-        value = fallback
-    if not value:
-        return ""
-    normalized = value.lstrip()
-    if normalized.startswith(prefix):
-        return normalized
-    return f"{prefix} {normalized}".strip()
-
-
-def lookup_manual(text: str) -> tuple[str | None, str | None]:
-    query = clean_text(text)
-    if not query:
-        return None, None
-
-    query_upper = query.upper()
-
-    # ตรงกับรหัสหรือคำสำคัญแบบตรงตัวก่อน
-    for key, value in manual_db.items():
-        key_text = str(key)
-        if key_text.upper() in query_upper:
-            return key_text, str(value)
-
-    # ค้นหารหัสตัวเลขในข้อความ
-    for code in CODE_PATTERN.findall(query):
-        if code in manual_db:
-            return code, manual_db[code]
-
-    # ค้นหาจากเนื้อหาคำอธิบายของ DB
-    query_lower = query.lower()
-    if len(query_lower) >= 3:
-        for key, value in manual_db.items():
-            if query_lower in str(value).lower():
-                return str(key), str(value)
-
-    return None, None
-
-
-def process_log_line(line: str) -> tuple[dict[str, str] | None, str | None]:
-    line = clean_text(line)
-    if not line:
-        return None, None
-
+def process_log_line(line):
     line_upper = line.upper()
-
-    if "MAXIMUM RETRACT FAIL" in line_upper:
-        return None, "retract_fail"
+    
+    # 1. ตรวจจับเรื่องกระดาษติด (PAPER FAULT / FAULT) ของเดิมของคุณเป๊ะๆ
+    if "PAPER FAULT" in line_upper or "FAULT" in line_upper:
+        return {
+            "time": "Unknown-Time",
+            "reason": "PAPER FAULT",
+            "line": line.strip(),
+            "solution": "USB communication error ErrCode 1375"
+        }, None
+           
+    # 2. ตรวจจับเรื่อง RECOVERY FAIL ของเดิมของคุณเป๊ะๆ
     if "RECOVERY FAIL" in line_upper:
         return None, "recovery_fail"
 
-    time_match = re.search(r"\d{2}:\d{2}:\d{2}(?:\.\d+)?", line)
+    # 3. ตรวจจับเรื่อง MAXIMUM RETRACT FAIL ของเดิมของคุณเป๊ะๆ
+    if "MAXIMUM RETRACT FAIL" in line_upper:
+        return None, "retract_fail"
+    
+    # ระบบคัดกรองคำมั่วและข้อมูลหน้าสลิปที่ไม่จำเป็นออกไปแบบรวบยอด ของเดิมของคุณเป๊ะๆ
+    if any(keyword in line_upper for keyword in ["BILL", "REF", "CARD", "PRINTER", "RECEIPT", "TERMINAL", "OPCODE", "AMOUNT", "SEQUENCE", "S0_I", "1000A", "1000B", "00100", "00500"]):
+        return None, None
+        
+    is_matched = False
+    detected_reason = ""
+    solution_text = "No manual suggestion available for this specific keyword."
+
+    # 🎯 แก้ไขการดักจับเวลาในบรรทัดเพื่อพ่วงต่อ TIMESTAMP ป้องกันระบบค้าง
+    time_match = re.search(r'\d{2}:\d{2}:\d{2}(?:\.\d+)?', line)
     log_time = time_match.group(0) if time_match else "Unknown Time"
 
-    key, manual_solution = lookup_manual(line)
-    if key and manual_solution:
+    # 🌟 [เพิ่มระบบดักจับตัวเลขข้ามเวลาตัวเก่งล่าสุด]: เช็กกลุ่มคำ Error/Failed ก่อนเป็นอันดับแรกสุดเพื่อล็อกความเสี่ยง
+    has_error_keyword = any(err_word in line_upper for err_word in ERROR_KEYWORDS)
+    
+    if has_error_keyword:
+        # สแกนหาชุดตัวเลขทั้งหมดในบรรทัด Log (ข้ามตัวเลขเวลา ย้อนไปคัดรหัสแท้)
+        numbers_found = CODE_PATTERN.findall(line)
+        for code_str in numbers_found:
+            # ข้ามตัวเลขบอกเวลาสั้นๆ ทั่วไป
+            if len(code_str) < 3 and not code_str.startswith('-'):
+                continue
+                
+            # ตรวจสอบเช็กคู่มือใน manual_db (แบบ String)
+            if code_str in manual_db:
+                is_matched = True
+                detected_reason = code_str
+                solution_text = manual_db[code_str]
+                break
+                
+            # ตรวจสอบเช็กคู่มือใน manual_db (แบบ Integer เผื่อไว้)
+            try:
+                if int(code_str) in manual_db:
+                    is_matched = True
+                    detected_reason = code_str
+                    solution_text = manual_db[int(code_str)]
+                    break
+            except ValueError:
+                pass
+
+    # 1. ของเดิมของคุณ: หากระบบกลุ่ม Error ด้านบนไม่ทำงานหรือหาโค้ดไม่เจอ ให้วิ่งเช็กตามระบบ Keywords หลักต่อ
+    if not is_matched:
+        for keyword in search_keywords:
+            clean_keyword = keyword.replace(r'\b', '').strip()
+            
+            # ถ้าเป็นคำสั้นพิเศษ บังคับตรวจสอบแบบคำโดดเดี่ยวๆ
+            if keyword in [r"\bNF\b", r"\bNT\b"]:
+                has_match = re.search(keyword, line_upper)
+            else:
+                has_match = clean_keyword in line_upper
+
+            if has_match:
+                is_matched = True
+                detected_reason = clean_keyword
+                # ดึงคำแปลจากคลังข้อมูล
+                if clean_keyword in manual_db:
+                    solution_text = manual_db[clean_keyword]
+                elif clean_keyword == "-14":
+                    solution_text = "Note jam flag is active."
+                elif "NETWORK" in clean_keyword:
+                    solution_text = "Network lost or disconnected."
+                break
+
+    # 2. ของเดิมของคุณ: ตรวจเช็กจากระบบ Regex ตัวเลขสล๊อตสำรองกรณีคำหลุด
+    if not is_matched:
+        all_digit_groups = re.findall(r'\b\d+\b', line_upper)
+        negative_codes = re.findall(r'-\d{3}\b', line_upper)
+        
+        for neg_code in negative_codes:
+            if neg_code in manual_db:
+                is_matched = True
+                detected_reason = neg_code
+                solution_text = manual_db[neg_code]
+                break
+            else:
+                is_matched = True
+                detected_reason = neg_code
+                solution_text = f"พบรหัสติดลบระบบ {neg_code}"
+                break
+
+        if not is_matched:
+            for num_group in all_digit_groups:
+                if len(num_group) == 4 or len(num_group) == 5:
+                    if num_group in manual_db:
+                        is_matched = True
+                        detected_reason = f"Error Code {num_group}"
+                        solution_text = manual_db[num_group]
+                        break
+
+    if is_matched:
         return {
             "time": log_time,
-            "reason": key,
-            "line": line,
-            "solution": manual_solution,
+            "line": line.strip(),
+            "reason": detected_reason,
+            "solution": solution_text
         }, None
-
-    for keyword in SEARCH_KEYWORDS:
-        if keyword in (r"\bNF\b", r"\bNT\b"):
-            matched = bool(re.search(keyword, line_upper))
-            reason = keyword.replace(r"\b", "")
-        else:
-            matched = keyword in line_upper
-            reason = keyword
-
-        if not matched:
-            continue
-
-        solution = "No manual suggestion available for this specific keyword."
-        if reason == "-14":
-            solution = "ตรวจพบสถานะ Note jam flag ทำงาน ให้ตรวจสอบเส้นทางลำเลียงธนบัตร"
-        elif "NETWORK" in reason:
-            solution = "ตรวจสอบสายสื่อสาร อุปกรณ์เครือข่าย และสถานะการเชื่อมต่อของเครื่อง"
-        elif reason in ("PAPER FAULT", "FAULT"):
-            solution = "ตรวจสอบกระดาษ ชุดพิมพ์ สายสัญญาณ และการสื่อสาร USB ของเครื่องพิมพ์"
-
-        return {
-            "time": log_time,
-            "reason": reason,
-            "line": line,
-            "solution": solution,
-        }, None
-
+        
     return None, None
 
-
-def analyze_log_content(log_content: str, filename: str = "File") -> tuple[list[dict[str, str]], int, int, int]:
-    results: list[dict[str, str]] = []
-    recovery_count = 0
-    retract_count = 0
-
+# --- ฟังก์ชันตัวช่วยวนลูปเนื้อหา Log เพื่อรวบรวมสถิติและผลลัพธ์ ของเดิมของคุณเป๊ะๆ ---
+def analyze_log_content(log_content, filename="File"):
+    found_count = 0
+    recovery_counter = 0
+    retract_fail_counter = 0
+    results_list = []
+    
     for line in log_content.splitlines():
-        result, event_type = process_log_line(line)
+        if "MAXIMUM RETRACT FAIL TIMES" in line:
+            retract_fail_counter += 1
+            
+        res, event_type = process_log_line(line)
+        
         if event_type == "recovery_fail":
-            recovery_count += 1
-        elif event_type == "retract_fail":
-            retract_count += 1
-        elif result:
-            result["filename"] = filename
-            results.append(result)
+            recovery_counter += 1
+        elif res:
+            found_count += 1
+            res["filename"] = filename
+            results_list.append(res)
+            
+    return results_list, recovery_counter, retract_fail_counter, found_count
 
-    return results, recovery_count, retract_count, len(results)
+# === แบ่งหน้าต่างการทำงาน Streamlit เป็น 2 วิธีด้วย Key กำกับป้องกันปุ่มค้าง ===
+tab1, tab2 = st.tabs(["📁 [วิธีที่ 1] อัปโหลดไฟล์ Log (.txt / .zip)", "✍️ [วิธีที่ 2] พิมพ์คำค้นหาเดี่ยว หรือพิมพ์ Log"])
 
-
-def decode_log_bytes(data: bytes) -> str:
-    for encoding in ("utf-8-sig", "utf-8", "cp874", "tis-620", "latin-1"):
-        try:
-            return data.decode(encoding)
-        except UnicodeDecodeError:
-            continue
-    return data.decode("utf-8", errors="ignore")
-
-
-def find_header_columns(ws) -> tuple[int, int, int]:
-    problem_aliases = {"problem_detail", "problem detail"}
-    solution_aliases = {"solving_problem", "solving problem", "solution_problem", "solution problem"}
-
-    scan_limit = min(ws.max_row, 30)
-    for row_idx in range(1, scan_limit + 1):
-        normalized: dict[str, int] = {}
-        for col_idx in range(1, ws.max_column + 1):
-            value = clean_text(ws.cell(row=row_idx, column=col_idx).value).lower()
-            if value:
-                normalized[value] = col_idx
-
-        prob_col = next((normalized[name] for name in problem_aliases if name in normalized), None)
-        solv_col = next((normalized[name] for name in solution_aliases if name in normalized), None)
-        if prob_col is not None:
-            if solv_col is None:
-                raise ValueError("พบ Problem_Detail แต่ไม่พบคอลัมน์ Solving_Problem/solving_problem")
-            return row_idx, prob_col, solv_col
-
-    raise ValueError("ไม่พบหัวตาราง Problem_Detail ภายใน 30 แถวแรก")
-
-
-def build_excel_result(file_bytes: bytes, selected_sheet: str, keep_vba: bool = False) -> tuple[bytes, dict[str, int]]:
-    source = io.BytesIO(file_bytes)
-    wb = load_workbook(source, keep_vba=keep_vba)
-    ws = wb[selected_sheet]
-
-    header_row, prob_col, solv_col = find_header_columns(ws)
-    updated_problem = 0
-    updated_solution = 0
-    manual_matches = 0
-    skipped_blank = 0
-
-    for row_idx in range(header_row + 1, ws.max_row + 1):
-        raw_problem = clean_text(ws.cell(row=row_idx, column=prob_col).value)
-        raw_solution = clean_text(ws.cell(row=row_idx, column=solv_col).value)
-
-        if not raw_problem and not raw_solution:
-            skipped_blank += 1
-            continue
-
-        manual_key, manual_text = lookup_manual(f"{raw_problem} {raw_solution}")
-
-        final_problem = ensure_prefix(raw_problem, "แจ้ง")
-        if manual_text:
-            manual_matches += 1
-            # ใช้ข้อความเดิมของช่างใน Problem_Detail และใช้คำแนะนำ DB ใน Solving_Problem
-            final_solution = ensure_prefix(manual_text, "แก้ไข")
-        else:
-            final_solution = ensure_prefix(raw_solution, "แก้ไข", "ตรวจสอบและดำเนินการแก้ไขระบบตามมาตรฐาน")
-
-        if final_problem and final_problem != raw_problem:
-            ws.cell(row=row_idx, column=prob_col, value=final_problem)
-            updated_problem += 1
-
-        if final_solution and final_solution != raw_solution:
-            ws.cell(row=row_idx, column=solv_col, value=final_solution)
-            updated_solution += 1
-
-        # เปลี่ยนเฉพาะ alignment โดยไม่แตะสี เส้นขอบ ฟอนต์ หรือรูปแบบเดิม
-        for col_idx in (prob_col, solv_col):
-            old_alignment = ws.cell(row=row_idx, column=col_idx).alignment
-            ws.cell(row=row_idx, column=col_idx).alignment = Alignment(
-                horizontal="left",
-                vertical="top",
-                wrap_text=True,
-                shrink_to_fit=old_alignment.shrink_to_fit,
-                text_rotation=old_alignment.text_rotation,
-                indent=old_alignment.indent,
-            )
-
-    # กำหนดความกว้างเฉพาะสองคอลัมน์เพื่อไม่ให้ข้อความถูกตัด โดยไม่รบกวนคอลัมน์อื่น
-    ws.column_dimensions[get_column_letter(prob_col)].width = max(
-        ws.column_dimensions[get_column_letter(prob_col)].width or 0, 55
-    )
-    ws.column_dimensions[get_column_letter(solv_col)].width = max(
-        ws.column_dimensions[get_column_letter(solv_col)].width or 0, 55
-    )
-    ws.freeze_panes = f"A{header_row + 1}"
-
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    stats = {
-        "updated_problem": updated_problem,
-        "updated_solution": updated_solution,
-        "manual_matches": manual_matches,
-        "skipped_blank": skipped_blank,
-    }
-    return output.getvalue(), stats
-
-
-def get_deepseek_client():
-    if OpenAI is None:
-        return None, "ยังไม่ได้ติดตั้งแพ็กเกจ openai"
-
-    api_key = st.secrets.get("DEEPSEEK_API_KEY", os.getenv("DEEPSEEK_API_KEY", ""))
-    if not api_key:
-        return None, "ยังไม่ได้ตั้งค่า DEEPSEEK_API_KEY"
-
-    return OpenAI(api_key=api_key, base_url="https://api.deepseek.com"), None
-
-
-# =========================================================================
-# TABS
-# =========================================================================
-tab1, tab2, tab3, tab4 = st.tabs(
-    [
-        "📁 วิเคราะห์ไฟล์ Log",
-        "✍️ ค้นหารหัส/ข้อความ",
-        "🤖 ATM Technical AI",
-        "📊 Excel Intelligence",
-    ]
-)
-
+# --- [วิธีที่ 1] จัดการผ่านหน้าต่างอัปโหลดไฟล์ ---
 with tab1:
-    uploaded_log = st.file_uploader(
-        "อัปโหลด .txt, .log, .data, .t หรือ .zip",
-        type=["txt", "log", "data", "t", "zip"],
-        key="log_uploader",
-    )
-
-    if uploaded_log is not None:
-        all_results: list[dict[str, str]] = []
+    uploaded_file = st.file_uploader("ลากไฟล์ .txt, .log, .data, .t หรือไฟล์ .zip มาวางตรงนี้", type=["txt", "log", "data", "t", "zip"], key="final_tab1_uploader_widget")
+    
+    if uploaded_file is not None:
+        log_content = ""
+        all_results = []
+        
         total_recovery = 0
-        total_retract = 0
+        total_retract_fail = 0
+        total_found = 0
 
-        try:
-            if uploaded_log.name.lower().endswith(".zip"):
-                with zipfile.ZipFile(uploaded_log, "r") as archive:
-                    for member in archive.namelist():
-                        if member.startswith("__MACOSX") or not member.lower().endswith((".txt", ".log", ".data", ".t")):
-                            continue
-                        content = decode_log_bytes(archive.read(member))
-                        results, recovery, retract, _ = analyze_log_content(content, member)
-                        all_results.extend(results)
-                        total_recovery += recovery
-                        total_retract += retract
-            else:
-                content = decode_log_bytes(uploaded_log.getvalue())
-                all_results, total_recovery, total_retract, _ = analyze_log_content(content, uploaded_log.name)
-
-            st.success("✅ วิเคราะห์ไฟล์สำเร็จ")
-            c1, c2, c3 = st.columns(3)
-            c1.metric("RECOVERY FAIL", total_recovery)
-            c2.metric("MAXIMUM RETRACT FAIL", total_retract)
-            c3.metric("เหตุการณ์ที่พบ", len(all_results))
-
-            if all_results:
-                rows = []
-                for row in all_results:
-                    date_match = re.search(r"\d{8}", row["filename"])
-                    if date_match:
-                        raw_date = date_match.group(0)
-                        date_text = f"{raw_date[6:8]}/{raw_date[4:6]}/{raw_date[0:4]}"
-                        timestamp = f"{date_text} {row['time']}"
-                    else:
-                        timestamp = row["time"]
-                    rows.append(
-                        {
-                            "TIMESTAMP": timestamp,
-                            "FILE NAME": row["filename"],
-                            "TRIGGER": row["reason"],
-                            "DETAIL LINE": row["line"],
-                            "RECOMMENDED": row["solution"],
-                        }
-                    )
-
-                result_df = pd.DataFrame(rows)
-                st.dataframe(result_df, use_container_width=True, hide_index=True)
-                st.download_button(
-                    "📥 ดาวน์โหลด CSV",
-                    result_df.to_csv(index=False).encode("utf-8-sig"),
-                    "log_analysis_report.csv",
-                    "text/csv",
-                )
-            else:
-                st.info("ไม่พบข้อมูลที่ตรงกับเงื่อนไข")
-        except Exception as exc:
-            st.error(f"❌ อ่านไฟล์ไม่สำเร็จ: {exc}")
-
-with tab2:
-    query = st.text_area("กรอกรหัส Error Code หรือวาง Log", height=130, key="manual_query")
-    if query:
-        result, event_type = process_log_line(query)
-        if result:
-            st.info(f"**รหัส/คำสำคัญ:** {result['reason']}")
-            st.success(f"**คำอธิบาย/แนวทาง:** {result['solution']}")
-        elif event_type:
-            st.warning(f"ตรวจพบเหตุการณ์: {event_type}")
-        else:
-            key, value = lookup_manual(query)
-            if key and value:
-                st.info(f"**รหัส/คำสำคัญ:** {key}")
-                st.success(value)
-            else:
-                st.warning("ไม่พบข้อมูลตรงกับ Manual Database")
-
-with tab3:
-    st.caption("ระบบจะค้นหา Manual Database ก่อนฟรี และเรียก DeepSeek เฉพาะเมื่อกดปุ่ม")
-    ai_prompt = st.text_area("คำถามจากช่าง หรือ Log ATM", height=160, key="ai_prompt")
-
-    if ai_prompt:
-        key, manual_result = lookup_manual(ai_prompt)
-        if manual_result:
-            st.success(f"**พบข้อมูล Manual: {key}**\n\n{manual_result}")
-        else:
-            st.info("ไม่พบข้อมูลตรงใน Manual Database")
-
-        if st.button("🤖 วิเคราะห์เพิ่มเติมด้วย AI", key="deepseek_button"):
-            client, client_error = get_deepseek_client()
-            if client_error:
-                st.error(f"❌ {client_error}")
-            else:
-                with st.spinner("กำลังวิเคราะห์..."):
-                    try:
-                        response = client.chat.completions.create(
-                            model="deepseek-chat",
-                            temperature=0.2,
-                            max_tokens=1800,
-                            messages=[
-                                {
-                                    "role": "system",
-                                    "content": (
-                                        "คุณคือวิศวกร Technical Support ATM ระดับ Senior "
-                                        "ตอบภาษาไทยแบบกระชับ โดยแบ่งเป็น สรุปอาการ, สาเหตุที่เป็นไปได้, "
-                                        "จุดตรวจสอบ, วิธีแก้ไข, ข้อควรระวัง และระดับความมั่นใจ "
-                                        "หากข้อมูลไม่พอให้ระบุสิ่งที่ต้องตรวจเพิ่ม"
-                                    ),
-                                },
-                                {
-                                    "role": "user",
-                                    "content": (
-                                        f"คำถาม/Log:\n{ai_prompt}\n\n"
-                                        f"ข้อมูล Manual:\n{manual_result or 'ไม่พบข้อมูลตรง'}"
-                                    ),
-                                },
-                            ],
-                        )
-                        st.markdown(response.choices[0].message.content)
-                    except Exception as exc:
-                        st.error(f"❌ AI Error: {exc}")
-
-with tab4:
-    st.header("📊 Excel Intelligence")
-    st.caption("เติมคำขึ้นต้น ‘แจ้ง’ และ ‘แก้ไข’ พร้อมรักษาสี เส้นขอบ ฟอนต์ และรูปแบบเดิมของไฟล์")
-
-    uploaded_excel = st.file_uploader(
-        "เลือกไฟล์ Excel (.xlsx หรือ .xlsm)",
-        type=["xlsx", "xlsm"],
-        key="excel_uploader",
-    )
-
-    if uploaded_excel is not None:
-        file_bytes = uploaded_excel.getvalue()
-        try:
-            preview_wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=False)
-            sheet_names = preview_wb.sheetnames
-            preview_wb.close()
-
-            selected_sheet = st.selectbox("เลือกชีตที่ต้องการประมวลผล", sheet_names)
-            st.success(f"✅ โหลดไฟล์สำเร็จ: {uploaded_excel.name}")
-
+        if uploaded_file.name.lower().endswith('.zip'):
             try:
-                preview_df = pd.read_excel(io.BytesIO(file_bytes), sheet_name=selected_sheet, header=None)
-                with st.expander("👀 ดูตัวอย่างข้อมูลก่อนประมวลผล"):
-                    st.dataframe(preview_df.head(30), use_container_width=True)
-            except Exception as preview_exc:
-                st.warning(f"เปิดตัวอย่างด้วย pandas ไม่สำเร็จ แต่ยังประมวลผลด้วย openpyxl ได้: {preview_exc}")
+                with zipfile.ZipFile(uploaded_file, 'r') as zip_ref:
+                    for member in zip_ref.namelist():
+                        if member.lower().endswith(('.txt', '.log', '.data', '.t')) and not member.startswith('__MACOSX'):
+                            with zip_ref.open(member) as f:
+                                file_text = f.read().decode('utf-8', errors='ignore')
+                                res_list, rec, ret, f_cnt = analyze_log_content(file_text, member)
+                                all_results.extend(res_list)
+                                total_recovery += rec
+                                total_retract_fail += ret
+                                total_found += f_cnt
+                st.success("🎉 แตกไฟล์และวิเคราะห์ไฟล์ Zip สำเร็จ!")
+            except Exception as e:
+                st.error(f"❌ ไม่สามารถอ่านไฟล์ Zip ได้: {e}")
+        else:
+            try:
+                log_content = uploaded_file.read().decode('utf-8', errors='ignore')
+                all_results, total_recovery, total_retract_fail, total_found = analyze_log_content(log_content, uploaded_file.name)
+                st.success("🎉 วิเคราะห์ไฟล์ข้อความสำเร็จ!")
+            except Exception as e:
+                st.error(f"❌ ไม่สามารถอ่านไฟล์ข้อมูลได้: {e}")
 
-            if st.button("🚀 ประมวลผล Excel", key="excel_process_button"):
-                with st.spinner("กำลังปรับข้อความและรักษารูปแบบเดิม..."):
-                    output_bytes, stats = build_excel_result(
-                        file_bytes, selected_sheet, uploaded_excel.name.lower().endswith(".xlsm")
-                    )
+        # --- ส่วนแสดงผล Dashboard สรุปจำนวนตัวนับ (Counter Cards) ---
+        st.markdown("### 📊 สรุปผลการตรวจสอบสถิติ")
+        metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
+        metrics_col1.metric("📌 ตรวจพบ RECOVERY FAIL", f"{total_recovery} ครั้ง")
+        metrics_col2.metric("❌ ตรวจพบ MAXIMUM RETRACT FAIL TIMES", f"{total_retract_fail} ครั้ง")
+        metrics_col3.metric("✨ พบเหตุการณ์ทริกเกอร์ทั้งหมด", f"{total_found} รายการ")
+        
+        # --- ตารางแสดงรายงานความผิดพลาดที่ตรวจพบ พร้อมการพ่วงต่อเวลาจริงสำเร็จรูป ---
+        if all_results:
+            st.markdown("### 📝 รายละเอียด Log ที่ตรงกับเงื่อนไข")
+            df = pd.DataFrame(all_results)
+            
+            table_rows_final = []
+            for _, row in df.iterrows():
+                date_match = re.search(r'\d{8}', row["filename"])
+                if date_match:
+                    d_str = date_match.group()
+                    log_date = f"{d_str[6:8]}/{d_str[4:6]}/{d_str[0:4]}"
+                else:
+                    log_date = "Unknown Date"
+                
+                timestamp_full = f"{log_date} {row['time']}" if log_date != "Unknown Date" else row['time']
+                table_rows_final.append({
+                    "time": timestamp_full,
+                    "filename": row["filename"],
+                    "reason": row["reason"],
+                    "line": row["line"],
+                    "solution": row["solution"]
+                })
+                
+            df_final = pd.DataFrame(table_rows_final)
+            df_final = df_final[["time", "filename", "reason", "line", "solution"]]
+            df_final.columns = ["⏰ TIMESTAMP", "🗂️ FILE NAME", "🎯 TRIGGER", "📝 DETAIL LINE", "💡 RECOMMENDED"]
+            
+            st.dataframe(df_final, use_container_width=True)
+            
+            csv_data = df_final.to_csv(index=False).encode('utf-8-sig')
+            st.download_button(label="📥 ดาวน์โหลดรายงานผลลัพธ์เป็นไฟล์ CSV", data=csv_data, file_name="log_analysis_report.csv", mime="text/csv", key="final_tab1_download_csv_btn")
+        else:
+            st.info("ไม่พบข้อมูล Log ใดๆ ที่ตรงตามเงื่อนไขการค้นหาในคลังคำศัพท์")
 
-                st.success("✅ ประมวลผลเสร็จสมบูรณ์")
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("เติม ‘แจ้ง’", stats["updated_problem"])
-                c2.metric("เติม/ปรับ ‘แก้ไข’", stats["updated_solution"])
-                c3.metric("พบข้อมูลจาก DB", stats["manual_matches"])
-                c4.metric("ข้ามแถวว่าง", stats["skipped_blank"])
-
-                base_name = os.path.splitext(uploaded_excel.name)[0]
-                extension = os.path.splitext(uploaded_excel.name)[1].lower()
-                output_name = f"{base_name}_Bank_Result{extension}"
-                mime = (
-                    "application/vnd.ms-excel.sheet.macroEnabled.12"
-                    if extension == ".xlsm"
-                    else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-                st.download_button(
-                    "📥 ดาวน์โหลดไฟล์ผลลัพธ์",
-                    data=output_bytes,
-                    file_name=output_name,
-                    mime=mime,
-                    key="excel_download_button",
-                )
-        except Exception as exc:
-            st.error(f"❌ ไม่สามารถเปิดหรือประมวลผลไฟล์ Excel ได้: {exc}")
-
-st.markdown(
-    """
+# --- [วิธีที่ 2] ดึงช่องพิมพ์กล่องข้อมูลกลับมาและแสดงผลทันทีตามสไตล์เก่าของพี่ ---
+# --- ส่วนเติมช่องพิมพ์วิธีที่ 2 ดั้งเดิมกลับมาแบบสมบูรณ์ชัวร์ 100% ---
+with tab2:
+    st.write("พิมพ์คำค้นหา รหัสโค้ด หรือวางข้อความบรรทัด Log ที่ต้องการตรวจสอบด้านล่างนี้")
+    st.write("กรอกคำค้นหา หรือบรรทัด Log เช่น 12054 หรือ DISPENSE NOTE FAILED")
+    
+    # 🎯 ใช้ชื่อคีย์จำเพาะพิเศษ ป้องกันปุ่มล็อกค้างรวนเงียบแน่นอนครับพี่
+    user_input_box = st.text_input("กรอกคำค้นหา", "", label_visibility="collapsed", key="final_tab2_manual_input_box_unique99")
+    
+    if user_input_box:
+        input_cleaned = user_input_box.strip()
+        user_input_upper = input_cleaned.upper()
+        st.markdown("### 🎯 ผลการตรวจสอบ")
+        
+        # ส่งค่าไปตรวจเช็กผ่านกระบวนการหลักที่พี่ซ่อมสำเร็จแล้ว
+        res, _ = process_log_line(input_cleaned)
+        if res:
+            st.info(f"**คำสำคัญ/รหัสโค้ดที่ตรวจพบในช่องค้นหา:** {res['reason']}")
+            st.success(f"**คำอธิบายคู่มือและแนวทางแก้ไข:** {res['solution']}")
+        else:
+            if user_input_upper in manual_db:
+                st.info(f"**คำสำคัญ/รหัสโค้ดที่ตรวจพบในช่องค้นหา:** {user_input_upper}")
+                st.success(f"**คำอธิบายคู่มือและแนวทางแก้ไข:** {manual_db[user_input_upper]}")
+            else:
+                st.warning("❌ ไม่พบข้อมูลรหัสความผิดพลาดหรือข้อความตรงตามเงื่อนไขในระบบแมนนวลของคุณ")
+# ย้ายคลังกล่องลิงก์ดาวน์โหลดคู่มือให้สะท้อนเงาสวยงาม
+st.markdown("""
     <div class="folder-link-box">
-        🔑 <b>RESOURCE LINK:</b>
-        <a href="https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec"
-           target="_blank" style="color:#38bdf8;text-decoration:none;font-weight:600;">
-           ดาวน์โหลดคู่มือทั้งหมดผ่าน OneDrive
+        🔑 <b>RESOURCE LINK:</b> <a href="https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec`" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">
+        [ดาวน์โหลดคู่มือทั้งหมด ผ่าน OneDrive]
         </a>
     </div>
-    """,
-    unsafe_allow_html=True,
+""", unsafe_allow_html=True)
+
+st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 35px;'></div>", unsafe_allow_html=True)
+
+# =========================================================================
+# =========================================================================
+# --- [ส่วน AI ใหม่ : ATM Technical Intelligence AI]
+# --- ตอนที่ 1/4 : เชื่อมต่อ DeepSeek + ระบบ Session
+# =========================================================================
+
+from openai import OpenAI
+
+DEEPSEEK_API_KEY = st.secrets.get("DEEPSEEK_API_KEY")
+
+if not DEEPSEEK_API_KEY:
+    st.error("❌ ไม่พบ DEEPSEEK_API_KEY กรุณาตรวจสอบ secrets.toml")
+    st.stop()
+
+
+client = OpenAI(
+    api_key=DEEPSEEK_API_KEY,
+    base_url="https://api.deepseek.com"
 )
+
+
+# ===============================
+# สร้างพื้นที่จำข้อมูลของ Chat
+# ===============================
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+
+if "current_prompt" not in st.session_state:
+    st.session_state.current_prompt = ""
+
+
+if "manual_result" not in st.session_state:
+    st.session_state.manual_result = ""
+
+
+if "ai_answer" not in st.session_state:
+    st.session_state.ai_answer = ""
+
+
+# ===============================
+# แสดงประวัติการสนทนาเดิม
+# ===============================
+
+for message in st.session_state.messages:
+
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+
+# ===============================
+# ช่องรับข้อความจากช่าง
+# ===============================
+
+prompt = st.chat_input(
+    "พิมพ์ Error Code หรือวาง Log ATM เพื่อวิเคราะห์..."
+)
+
+
+if prompt:
+
+    st.session_state.current_prompt = prompt
+
+    st.session_state.messages.append(
+        {
+            "role": "user",
+            "content": prompt
+        }
+    )
+
+
+    with st.chat_message("user"):
+        st.markdown(prompt)
+		# =========================================================================
+# --- ตอนที่ 2/4 : ค้นหา Manual DB ก่อน (ใช้ฟรี)
+# =========================================================================
+
+if prompt:
+
+    matches = []
+
+    prompt_lower = prompt.lower()
+
+
+    # ===============================
+    # ค้นหาใน manual_db
+    # ===============================
+
+    if "manual_db" in globals():
+
+        for key, value in manual_db.items():
+
+            key_text = str(key).lower()
+            value_text = str(value).lower()
+
+            if (
+                key_text in prompt_lower
+                or prompt_lower in key_text
+                or prompt_lower in value_text
+            ):
+
+                matches.append(
+                    f"📌 **รหัส / คำสำคัญ : {key}**\n\n{value}"
+                )
+
+
+    # ===============================
+    # ถ้าพบข้อมูลจากคู่มือ
+    # ===============================
+
+    if matches:
+
+        st.session_state.manual_result = (
+            "## 🔍 พบข้อมูลจาก Manual Database\n\n"
+            + "\n\n----------------------\n\n".join(matches)
+        )
+
+
+    else:
+
+        st.session_state.manual_result = (
+            "❌ ไม่พบข้อมูลตรงกับฐานข้อมูล Manual"
+        )
+
+
+    # แสดงผลจาก DB
+
+    with st.chat_message("assistant"):
+
+        st.markdown(
+            st.session_state.manual_result
+        )
+
+
+    # ===============================
+    # เก็บผล DB เข้า History
+    # ===============================
+
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": st.session_state.manual_result
+        }
+    )
+	# =========================================================================
+# --- ตอนที่ 3/4 : ปุ่มวิเคราะห์ด้วย AI (เรียก DeepSeek เมื่อกดเท่านั้น)
+# =========================================================================
+
+if st.session_state.current_prompt:
+
+    st.markdown("---")
+
+    ai_button = st.button(
+        "🤖 วิเคราะห์เพิ่มเติมด้วย AI",
+        key="deepseek_analyze_button"
+    )
+
+
+    if ai_button:
+
+        with st.chat_message("assistant"):
+
+            message_placeholder = st.empty()
+
+            try:
+
+                response = client.chat.completions.create(
+
+                    model="deepseek-chat",
+
+                    temperature=0.2,
+
+                    max_tokens=2000,
+
+                    messages=[
+
+                        {
+                            "role": "system",
+
+                            "content": """
+คุณคือ ATM Technical Intelligence AI
+
+เป็นวิศวกร Technical Support ระดับ Senior
+เชี่ยวชาญ ATM ทุกยี่ห้อ เช่น NCR, Diebold, Hyosung
+
+หน้าที่:
+- วิเคราะห์ Error Code
+- วิเคราะห์ Log ATM
+- วิเคราะห์สาเหตุ Root Cause
+- แนะนำขั้นตอนตรวจสอบสำหรับ Technician
+
+รูปแบบคำตอบ:
+
+1. 🔍 สรุปอาการ
+2. 🧠 วิเคราะห์สาเหตุ
+3. 🛠 จุดตรวจสอบ
+4. 🔧 วิธีแก้ไข
+5. ⚠️ ข้อควรระวัง
+6. 📊 ระดับความมั่นใจ
+
+ตอบภาษาไทย
+ใช้ภาษาช่างเทคนิค
+ถ้าข้อมูลไม่พอให้แจ้งสิ่งที่ต้องตรวจเพิ่ม
+"""
+                        },
+
+
+                        {
+                            "role": "user",
+
+                            "content": f"""
+คำถามจากช่าง:
+
+{st.session_state.current_prompt}
+
+
+ข้อมูลจาก Manual Database:
+
+{st.session_state.manual_result}
+
+
+กรุณาวิเคราะห์เพิ่มเติม
+"""
+                        }
+
+                    ]
+
+                )
+
+
+                ai_response = response.choices[0].message.content
+
+
+                message_placeholder.markdown(
+                    ai_response
+                )
+
+
+                st.session_state.messages.append(
+
+                    {
+                        "role": "assistant",
+                        "content": ai_response
+                    }
+
+                )
+
+
+            except Exception as e:
+
+                message_placeholder.error(
+                    f"❌ AI Error : {str(e)}"
+                )
+				# =========================================================================
+# --- ตอนที่ 4/4 : ตกแต่งหน้าตา Chat AI
+# =========================================================================
+
+st.markdown("""
+<style>
+
+    /* ช่องพิมพ์ Chat */
+    div[data-testid="stChatInput"] textarea {
+
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827 !important;
+        background-color: #ffffff !important;
+
+    }
+
+
+    /* กล่องข้อความ AI */
+
+    div[data-testid="stChatMessage"] {
+
+        border-radius: 12px !important;
+        padding: 12px !important;
+        margin-bottom: 12px !important;
+
+    }
+
+
+    /* ข้อความ AI */
+
+    div[data-testid="stChatMessage"] .stMarkdown p,
+    div[data-testid="stChatMessage"] .stMarkdown li {
+
+        color: #166534 !important;
+        font-size: 15px !important;
+
+    }
+
+
+    /* ปุ่ม AI */
+
+    div.stButton > button {
+
+        background: linear-gradient(
+            135deg,
+            #2563eb,
+            #06b6d4
+        ) !important;
+
+        color: white !important;
+
+        border-radius: 15px !important;
+
+        font-weight: bold !important;
+
+        padding: 12px 25px !important;
+
+    }
+
+
+    div.stButton > button:hover {
+
+        transform: scale(1.03);
+
+    }
+
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# =========================================================================
+# --- จบระบบ ATM Technical Intelligence AI
+# =========================================================================
+            
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
+
+
+
