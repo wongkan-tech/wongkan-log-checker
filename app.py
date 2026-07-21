@@ -16,8 +16,8 @@ st.markdown("""
     <style>
     /* นำเข้าฟอนต์ Google Fonts เพื่อความพรีเมียม */
     @import url('https://googleapis.com');
-	
-	/* 1. มิติพื้นหลังห้องคอนโทรลรูมข้ามจักรวาล (Deep Space Void Grid) */
+ 
+ /* 1. มิติพื้นหลังห้องคอนโทรลรูมข้ามจักรวาล (Deep Space Void Grid) */
     .stApp {
         background-color: #030712;
         background-image: 
@@ -27,8 +27,7 @@ st.markdown("""
         color: #f3f4f6;
         font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
     }
-    
-    /* 2. หัวข้อพรีเมียมสามมิติแบบ Dynamic Chroma Text */
+	/* 2. หัวข้อพรีเมียมสามมิติแบบ Dynamic Chroma Text */
     .ultra-title {
         background: linear-gradient(135deg, #38bdf8 10%, #6366f1 50%, #34d399 90%);
         -webkit-background-clip: text;
@@ -57,8 +56,7 @@ st.markdown("""
         position: relative;
         overflow: hidden;
     }
-    
-    /* โครงขอบเรืองแสงไฟวิ่งนีออนตัดขั้วเวลาวางเมาส์ชี้ (Neon Border Explosion) */
+	/* โครงขอบเรืองแสงไฟวิ่งนีออนตัดขั้วเวลาวางเมาส์ชี้ (Neon Border Explosion) */
     .log-card:hover {
         transform: translateY(-8px) scale(1.005);
         border-color: rgba(99, 102, 241, 0.5);
@@ -103,8 +101,7 @@ st.markdown("""
     div.stButton > button:active {
         transform: translateY(-1px) scale(0.98) !important;
     }
-
-    /* 5. ลิงก์ดาวน์โหลดสุดเท่ แยกกล่องออกมาเป็นยานแม่ */
+	    /* 5. ลิงก์ดาวน์โหลดสุดเท่ แยกกล่องออกมาเป็นยานแม่ */
     .folder-link-box {
         background: rgba(30, 41, 59, 0.3);
         border: 1px dashed rgba(56, 189, 248, 0.3);
@@ -133,9 +130,6 @@ st.markdown("""
 # =========================================================================
 st.markdown('<h1 class="ultra-title">🖥️  ATM Technical Intelligence</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-text">ระบบวิเคราะห์ไฟลน์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ</p>', unsafe_allow_html=True)
-
-
-
 # =========================================================================
 # --- [ส่วนที่ 4: ตัวแปรคลังคำสำคัญและรูปแบบเงื่อนไขสแกนดั้งเดิมของคุณ] ---
 # =========================================================================
@@ -157,12 +151,8 @@ search_keywords = [
     "-14", "-12", "-13",
     r"\bNF\b", r"\bNT\b"
 ]
-
 ERROR_KEYWORDS = ["ERROR", "ERR", "FAILED", "FAIL", "FAULT", "PAPER FAULT"]
 CODE_PATTERN = re.compile(r'-?\d{3,5}')
-
-
-
 
 manual_db = {
         "10101": "ATMSNcontrol unit Parametererror Ignore None -> พารามิเตอร์ผิดพลาด (ระบบควบคุม ATM SN) ระบบให้ข้ามไปได้ ไม่ต้องดำเนินการใด ๆ",
@@ -3607,7 +3597,6 @@ manual_db = {
         "CHIP": "502019975 CONTACT ASSY CRT-350N หัวชิบการ์ด",
         "PAPER FAULT": "USB communication error ErrCode 1375"
 		}
-# =========================================================================
 # --- [ส่วนที่ 3: ระบบประมวลผลดั้งเดิม ปรับปรุงฟังก์ชันตรวจจับโค้ดข้ามเวลาตัวเก่งล่าสุด] ---
 # =========================================================================
 
@@ -3630,8 +3619,7 @@ def process_log_line(line):
     # 3. ตรวจจับเรื่อง MAXIMUM RETRACT FAIL ของเดิมของคุณเป๊ะๆ
     if "MAXIMUM RETRACT FAIL" in line_upper:
         return None, "retract_fail"
-    
-    # ระบบคัดกรองคำมั่วและข้อมูลหน้าสลิปที่ไม่จำเป็นออกไปแบบรวบยอด ของเดิมของคุณเป๊ะๆ
+		# ระบบคัดกรองคำมั่วและข้อมูลหน้าสลิปที่ไม่จำเป็นออกไปแบบรวบยอด ของเดิมของคุณเป๊ะๆ
     if any(keyword in line_upper for keyword in ["BILL", "REF", "CARD", "PRINTER", "RECEIPT", "TERMINAL", "OPCODE", "AMOUNT", "SEQUENCE", "S0_I", "1000A", "1000B", "00100", "00500"]):
         return None, None
         
@@ -3645,8 +3633,7 @@ def process_log_line(line):
 
     # 🌟 [เพิ่มระบบดักจับตัวเลขข้ามเวลาตัวเก่งล่าสุด]: เช็กกลุ่มคำ Error/Failed ก่อนเป็นอันดับแรกสุดเพื่อล็อกความเสี่ยง
     has_error_keyword = any(err_word in line_upper for err_word in ERROR_KEYWORDS)
-    
-    if has_error_keyword:
+	 if has_error_keyword:
         # สแกนหาชุดตัวเลขทั้งหมดในบรรทัด Log (ข้ามตัวเลขเวลา ย้อนไปคัดรหัสแท้)
         numbers_found = CODE_PATTERN.findall(line)
         for code_str in numbers_found:
@@ -3675,8 +3662,7 @@ def process_log_line(line):
     if not is_matched:
         for keyword in search_keywords:
             clean_keyword = keyword.replace(r'\b', '').strip()
-            
-            # ถ้าเป็นคำสั้นพิเศษ บังคับตรวจสอบแบบคำโดดเดี่ยวๆ
+			# ถ้าเป็นคำสั้นพิเศษ บังคับตรวจสอบแบบคำโดดเดี่ยวๆ
             if keyword in [r"\bNF\b", r"\bNT\b"]:
                 has_match = re.search(keyword, line_upper)
             else:
@@ -3698,8 +3684,7 @@ def process_log_line(line):
     if not is_matched:
         all_digit_groups = re.findall(r'\b\d+\b', line_upper)
         negative_codes = re.findall(r'-\d{3}\b', line_upper)
-        
-        for neg_code in negative_codes:
+		for neg_code in negative_codes:
             if neg_code in manual_db:
                 is_matched = True
                 detected_reason = neg_code
@@ -3729,7 +3714,6 @@ def process_log_line(line):
         }, None
         
     return None, None
-
 # --- ฟังก์ชันตัวช่วยวนลูปเนื้อหา Log เพื่อรวบรวมสถิติและผลลัพธ์ ของเดิมของคุณเป๊ะๆ ---
 def analyze_log_content(log_content, filename="File"):
     found_count = 0
@@ -3758,7 +3742,6 @@ tab1, tab2, tab3 = st.tabs([
     "✍️ [วิธีที่ 2] พิมพ์คำค้นหาเดี่ยว หรือพิมพ์ Log",
     "📊 Excel Intelligence"
 ])
-
 # --- [วิธีที่ 1] จัดการผ่านหน้าต่างอัปโหลดไฟล์ ---
 with tab1:
     uploaded_file = st.file_uploader("ลากไฟล์ .txt, .log, .data, .t หรือไฟล์ .zip มาวางตรงนี้", type=["txt", "log", "data", "t", "zip"], key="final_tab1_uploader_widget")
@@ -3793,8 +3776,7 @@ with tab1:
                 st.success("🎉 วิเคราะห์ไฟล์ข้อความสำเร็จ!")
             except Exception as e:
                 st.error(f"❌ ไม่สามารถอ่านไฟล์ข้อมูลได้: {e}")
-
-        # --- ส่วนแสดงผล Dashboard สรุปจำนวนตัวนับ (Counter Cards) ---
+				# --- ส่วนแสดงผล Dashboard สรุปจำนวนตัวนับ (Counter Cards) ---
         st.markdown("### 📊 สรุปผลการตรวจสอบสถิติ")
         metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
         metrics_col1.metric("📌 ตรวจพบ RECOVERY FAIL", f"{total_recovery} ครั้ง")
@@ -3829,8 +3811,7 @@ with tab1:
             df_final.columns = ["⏰ TIMESTAMP", "🗂️ FILE NAME", "🎯 TRIGGER", "📝 DETAIL LINE", "💡 RECOMMENDED"]
             
             st.dataframe(df_final, use_container_width=True)
-            
-            csv_data = df_final.to_csv(index=False).encode('utf-8-sig')
+			csv_data = df_final.to_csv(index=False).encode('utf-8-sig')
             st.download_button(label="📥 ดาวน์โหลดรายงานผลลัพธ์เป็นไฟล์ CSV", data=csv_data, file_name="log_analysis_report.csv", mime="text/csv", key="final_tab1_download_csv_btn")
         else:
             st.info("ไม่พบข้อมูล Log ใดๆ ที่ตรงตามเงื่อนไขการค้นหาในคลังคำศัพท์")
@@ -3848,8 +3829,7 @@ with tab2:
         input_cleaned = user_input_box.strip()
         user_input_upper = input_cleaned.upper()
         st.markdown("### 🎯 ผลการตรวจสอบ")
-        
-        # ส่งค่าไปตรวจเช็กผ่านกระบวนการหลักที่พี่ซ่อมสำเร็จแล้ว
+ # ส่งค่าไปตรวจเช็กผ่านกระบวนการหลักที่พี่ซ่อมสำเร็จแล้ว
         res, _ = process_log_line(input_cleaned)
         if res:
             st.info(f"**คำสำคัญ/รหัสโค้ดที่ตรวจพบในช่องค้นหา:** {res['reason']}")
@@ -3870,7 +3850,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 35px;'></div>", unsafe_allow_html=True)
-
 # =========================================================================
 # =========================================================================
 # --- [ส่วน AI ใหม่ : ATM Technical Intelligence AI]
@@ -3884,8 +3863,6 @@ DEEPSEEK_API_KEY = st.secrets.get("DEEPSEEK_API_KEY")
 if not DEEPSEEK_API_KEY:
     st.error("❌ ไม่พบ DEEPSEEK_API_KEY กรุณาตรวจสอบ secrets.toml")
     st.stop()
-
-
 client = OpenAI(
     api_key=DEEPSEEK_API_KEY,
     base_url="https://api.deepseek.com"
@@ -3910,8 +3887,6 @@ if "manual_result" not in st.session_state:
 
 if "ai_answer" not in st.session_state:
     st.session_state.ai_answer = ""
-
-
 # ===============================
 # แสดงประวัติการสนทนาเดิม
 # ===============================
@@ -3945,7 +3920,7 @@ if prompt:
 
     with st.chat_message("user"):
         st.markdown(prompt)
-		# =========================================================================
+  # =========================================================================
 # --- ตอนที่ 2/4 : ค้นหา Manual DB ก่อน (ใช้ฟรี)
 # =========================================================================
 
@@ -3954,9 +3929,7 @@ if prompt:
     matches = []
 
     prompt_lower = prompt.lower()
-
-
-    # ===============================
+# ===============================
     # ค้นหาใน manual_db
     # ===============================
 
@@ -3998,8 +3971,7 @@ if prompt:
 
 
     # แสดงผลจาก DB
-
-    with st.chat_message("assistant"):
+with st.chat_message("assistant"):
 
         st.markdown(
             st.session_state.manual_result
@@ -4016,7 +3988,7 @@ if prompt:
             "content": st.session_state.manual_result
         }
     )
-	# =========================================================================
+ # =========================================================================
 # --- ตอนที่ 3/4 : ปุ่มวิเคราะห์ด้วย AI (เรียก DeepSeek เมื่อกดเท่านั้น)
 # =========================================================================
 
@@ -4028,9 +4000,7 @@ if st.session_state.current_prompt:
         "🤖 วิเคราะห์เพิ่มเติมด้วย AI",
         key="deepseek_analyze_button"
     )
-
-
-    if ai_button:
+if ai_button:
 
         with st.chat_message("assistant"):
 
@@ -4052,7 +4022,7 @@ if st.session_state.current_prompt:
                             "role": "system",
 
                             "content": """
-							คำสั่งจัดรูปแบบโครงสร้างตารางและแปลข้อมูลเพื่อนำส่งธนาคาร (ข้อกำหนดเคร่งครัด)
+       คำสั่งจัดรูปแบบโครงสร้างตารางและแปลข้อมูลเพื่อนำส่งธนาคาร (ข้อกำหนดเคร่งครัด)
 
 กรุณาประมวลผลข้อมูลบันทึกการแจ้งซ่อมตู้ ATM และสร้างไฟล์ Excel ใหม่ โดยปฏิบัติตามขั้นตอนทีละข้ออย่างถูกต้อง ดังนี้:
 
@@ -4063,7 +4033,6 @@ if st.session_state.current_prompt:
 - ให้แปลข้อมูลดิบภาษาอังกฤษเชิงช่างให้เป็นภาษาไทยที่เป็นทางการ สุภาพ และเข้าใจง่ายสำหรับเจ้าหน้าที่ธนาคาร
 - ห้ามลบข้อมูลสำคัญ เช่น วันที่, เวลา, รหัส Error Code และ รหัสตู้ ATM (เช่น T038B...) ให้คงไว้และย้ายไปอยู่ต่อท้ายประโยคเสมอ
 - ตัวอย่าง: "แจ้ง เครื่องขัดข้องค้างที่หน้าจอผู้ดูแลระบบ / 2025-04-30 / T038B030BE62G262"
-
 3. [คอลัมน์ N - Solving_Problem]:
 - ข้อความในคอลัมน์นี้ "ต้องขึ้นต้นด้วยคำว่า 'แก้ไข ' เสมอทุกบรรทัด" ห้ามยกเว้น
 - ให้แปลวิธีแก้ไขปัญหาจากภาษาอังกฤษเชิงช่างให้เป็นภาษาไทยที่เป็นทางการและสุภาพ
@@ -4088,7 +4057,6 @@ if st.session_state.current_prompt:
 4. 🔧 วิธีแก้ไข
 5. ⚠️ ข้อควรระวัง
 6. 📊 ระดับความมั่นใจ
-
 ตอบภาษาไทย
 ใช้ภาษาช่างเทคนิค
 ถ้าข้อมูลไม่พอให้แจ้งสิ่งที่ต้องตรวจเพิ่ม
@@ -4120,9 +4088,7 @@ if st.session_state.current_prompt:
 
 
                 ai_response = response.choices[0].message.content
-
-
-                message_placeholder.markdown(
+				message_placeholder.markdown(
                     ai_response
                 )
 
@@ -4142,7 +4108,7 @@ if st.session_state.current_prompt:
                 message_placeholder.error(
                     f"❌ AI Error : {str(e)}"
                 )
-				# =========================================================================
+    # =========================================================================
 # --- ตอนที่ 4/4 : ตกแต่งหน้าตา Chat AI
 # =========================================================================
 
@@ -4157,9 +4123,7 @@ st.markdown("""
         background-color: #ffffff !important;
 
     }
-
-
-    /* กล่องข้อความ AI */
+	/* กล่องข้อความ AI */
 
     div[data-testid="stChatMessage"] {
 
@@ -4190,8 +4154,7 @@ st.markdown("""
             #2563eb,
             #06b6d4
         ) !important;
-
-        color: white !important;
+		color: white !important;
 
         border-radius: 15px !important;
 
@@ -4244,8 +4207,7 @@ with tab3:
             from openpyxl import load_workbook
             from openpyxl.styles import Font, PatternFill, Alignment
             from openpyxl.utils import get_column_letter
-
-            api_key = st.secrets.get("DEEPSEEK_API_KEY", os.environ.get("DEEPSEEK_API_KEY", "YOUR_API_KEY"))
+			api_key = st.secrets.get("DEEPSEEK_API_KEY", os.environ.get("DEEPSEEK_API_KEY", "YOUR_API_KEY"))
             client = OpenAI(
                 base_url="https://deepseek.com",
                 api_key=api_key
@@ -4264,8 +4226,7 @@ with tab3:
             try:
                 wb = load_workbook(file_name)
                 ws = wb[sheet_name]
-
-                header_row_idx = None
+				header_row_idx = None
                 for row_idx in range(1, ws.max_row + 1):
                     row_values = [str(ws.cell(row=row_idx, column=col_idx).value).strip() for col_idx in range(1, ws.max_column + 1)]
                     if "Problem_Detail" in row_values:
@@ -4286,8 +4247,7 @@ with tab3:
 
                 start_data_row = header_row_idx + 1
                 total_rows = ws.max_row - start_data_row + 1
-                
-                def local_clean(text):
+				def local_clean(text):
                     return " ".join(str(text).replace("\n", " ").replace("\r", " ").split()).strip()
 
                 ai_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
@@ -4311,8 +4271,7 @@ with tab3:
                         final_thai_prob = f"แจ้ง {raw_prob}" if not raw_prob.startswith("แจ้ง") else raw_prob
                         db_sol_text = local_clean(log_result["solution"])
                         final_thai_solv = f"แก้ไข {db_sol_text}" if not db_sol_text.startswith("แก้ไข") else db_sol_text
-                        
-                        ws.cell(row=r_idx, column=prob_col_idx, value=final_thai_prob)
+						ws.cell(row=r_idx, column=prob_col_idx, value=final_thai_prob)
                         ws.cell(row=r_idx, column=solv_col_idx, value=final_thai_solv)
                         processed_count += 1
                     else:
@@ -4330,7 +4289,7 @@ with tab3:
                             response = client.chat.completions.create(
                                 model="deepseek-v4-flash",
                                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-                                temperature=0.2,
+								temperature=0.2,
                                 response_format={"type": "json_object"}
                             )
 
@@ -4354,7 +4313,7 @@ with tab3:
                     max_length = 0
                     column_letter = get_column_letter(col_idx)
                     for row_search in range(1, ws.max_row + 1):
-                        cell_v = ws.cell(row=row_search, column=col_idx).value
+						cell_v = ws.cell(row=row_search, column=col_idx).value
                         if cell_v:
                             cell_str = str(cell_v)
                             thai_len = len(cell_str.encode('utf-8'))
@@ -4377,8 +4336,7 @@ with tab3:
                 
                 updated_df = pd.read_excel(output_name, sheet_name=sheet_name, header=header_row_idx)
                 st.dataframe(updated_df)
-
-                st.markdown('<div class="folder-link-box">', unsafe_allow_html=True)
+				st.markdown('<div class="folder-link-box">', unsafe_allow_html=True)
                 st.write("📥 ไฟล์จัดทำแปลงภาษาไทยขึ้นต้น แจ้ง/แก้ไข และรักษาฟอร์แมตสไตล์เดิมเสร็จสมบูรณ์")
                 with open(output_name, "rb") as f:
                     st.download_button(
@@ -4397,6 +4355,24 @@ with tab3:
             if os.path.exists(file_name):
                 try: os.remove(file_name)
                 except: pass
+				
+						
+								
+						
+				
+				
+			
+		
+	
+				
+
+
+
+				
+
+			
+		
+
             
 
 
