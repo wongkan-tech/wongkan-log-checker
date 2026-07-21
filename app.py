@@ -3754,7 +3754,11 @@ def analyze_log_content(log_content, filename="File"):
     return results_list, recovery_counter, retract_fail_counter, found_count
 
 # === แบ่งหน้าต่างการทำงาน Streamlit เป็น 2 วิธีด้วย Key กำกับป้องกันปุ่มค้าง ===
-tab1, tab2 = st.tabs(["📁 [วิธีที่ 1] อัปโหลดไฟล์ Log (.txt / .zip)", "✍️ [วิธีที่ 2] พิมพ์คำค้นหาเดี่ยว หรือพิมพ์ Log"])
+tab1, tab2, tab3 = st.tabs([
+    "📁 [วิธีที่ 1] อัปโหลดไฟล์ Log (.txt / .zip)",
+    "✍️ [วิธีที่ 2] พิมพ์คำค้นหาเดี่ยว หรือพิมพ์ Log",
+    "📊 Excel Intelligence"
+])
 
 # --- [วิธีที่ 1] จัดการผ่านหน้าต่างอัปโหลดไฟล์ ---
 with tab1:
@@ -4196,13 +4200,26 @@ st.markdown("""
 # =========================================================================
 # --- จบระบบ ATM Technical Intelligence AI
 # =========================================================================
+with tab3:
+
+    st.header("📊 Excel Intelligence")
+
+    st.info("🚧 กำลังพัฒนา Excel AI")
+
+    uploaded_excel = st.file_uploader(
+        "เลือกไฟล์ Excel",
+        type=["xlsx", "xls", "xlsm"],
+        key="excel_uploader"
+    )
+
+    if uploaded_excel is not None:
+        st.success(f"✅ โหลดไฟล์สำเร็จ : {uploaded_excel.name}")
             
 
 
 
 
             
-
 
 
 
