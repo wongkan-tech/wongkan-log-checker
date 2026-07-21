@@ -62,6 +62,42 @@ div[data-baseweb="textarea"] textarea::placeholder {
     -webkit-text-fill-color: #6b7280 !important;
     opacity: 1 !important;
 }
+/* บังคับให้ช่องพิมพ์ทุกชนิดเห็นตัวอักษร */
+.stTextInput input,
+.stTextArea textarea,
+[data-testid="stTextInput"] input,
+[data-testid="stTextArea"] textarea,
+div[data-baseweb="input"] input,
+div[data-baseweb="textarea"] textarea {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    background-color: #ffffff !important;
+    caret-color: #000000 !important;
+    opacity: 1 !important;
+    font-size: 16px !important;
+}
+
+/* พื้นหลังชั้นนอกของช่อง */
+[data-testid="stTextInput"] div[data-baseweb="input"],
+[data-testid="stTextArea"] div[data-baseweb="textarea"] {
+    background-color: #ffffff !important;
+}
+
+/* ข้อความตัวอย่างในช่อง */
+.stTextInput input::placeholder,
+.stTextArea textarea::placeholder {
+    color: #666666 !important;
+    -webkit-text-fill-color: #666666 !important;
+    opacity: 1 !important;
+}
+
+/* ป้องกันตอนคลิกหรือโฟกัสแล้วข้อความหาย */
+.stTextInput input:focus,
+.stTextArea textarea:focus {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    background-color: #ffffff !important;
+}
 
     .ultra-title {
         background: linear-gradient(135deg, #38bdf8 10%, #6366f1 50%, #34d399 90%);
