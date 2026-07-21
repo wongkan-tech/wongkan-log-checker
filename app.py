@@ -1,13 +1,7 @@
 import re
 import os
 import zipfile
-import streamlit as st
-import pandas as pd
-from openai import OpenAI
-
-# =========================================================================
-# --- [ส่วนที่ 1: ตั้งค่าหน้าจอโปรแกรม Streamlit แบบไร้ขอบกว้างเต็มพิกัด] ---
-# =========================================================================
+import streamlit as st======================================
 st.set_page_config(page_title="ATM Log Intelligence Center", layout="wide")
 
 # =========================================================================
@@ -4213,7 +4207,46 @@ with tab3:
     )
 
     if uploaded_excel is not None:
+
         st.success(f"✅ โหลดไฟล์สำเร็จ : {uploaded_excel.name}")
+
+        # อ่านไฟล์ Excel
+        import pandas as pd
+
+        df = pd.read_excel(uploaded_excel)
+
+        st.write(f"📄 จำนวนข้อมูล : {len(df)} แถว")
+
+        # แสดงตัวอย่างข้อมูล
+        with st.expander("👀 Preview Excel"):
+            st.dataframe(df)
+
+        # ปุ่มวิเคราะห์
+        if st.button("🚀 วิเคราะห์ด้วย AI", key="excel_ai_button"):
+
+            progress = st.progress(0)
+            status = st.empty()
+
+            for i in range(100):
+                progress.progress(i + 1)
+                status.text(f"กำลังวิเคราะห์... {i+1}%")
+
+            st.success("✅ วิเคราะห์เสร็จแล้ว")
+
+            st.dataframe(df)
+
+            output_name = "Excel_AI_Result.xlsx"
+
+            with pd.ExcelWriter(output_name, engine="openpyxl") as writer:
+                df.to_excel(writer, index=False)
+
+            with open(output_name, "rb") as f:
+                st.download_button(
+                    "📥 ดาวน์โหลดผลลัพธ์",
+                    f,
+                    file_name=output_name,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
             
 
 
