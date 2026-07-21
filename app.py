@@ -1,8 +1,13 @@
 import re
 import os
 import zipfile
+import json
+import pandas as pd
 import streamlit as st
-st.set_page_config(page_title="ATM Log Intelligence Center", layout="wide")
+from openai import OpenAI
+from openpyxl import load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
 
 # =========================================================================
 # --- [ส่วนที่ 2: มหากาพย์ CSS ดีไซน์ระดับโลก (Advanced Cyber Metallic Neon) ⭐⭐⭐⭐⭐] ---
@@ -4195,10 +4200,8 @@ st.markdown("""
 # --- จบระบบ ATM Technical Intelligence AI
 # =========================================================================
 with tab3:
-
     st.header("📊 Excel Intelligence")
-
-    st.info("🚧 กำลังพัฒนา Excel AI")
+    st.markdown('<p class="sub-text">ระบบปรับถ้อยคำศัพท์เทคนิคช่างชิดซ้ายชิดบน ขึ้นต้นด้วย แจ้ง/แก้ไข โดยที่ฟอร์แมตและสีไฮไลต์เดิมของธนาคารไม่สูญหาย</p>', unsafe_allow_html=True)
 
     uploaded_excel = st.file_uploader(
         "เลือกไฟล์ Excel",
@@ -4207,46 +4210,173 @@ with tab3:
     )
 
     if uploaded_excel is not None:
-
         st.success(f"✅ โหลดไฟล์สำเร็จ : {uploaded_excel.name}")
 
-        # อ่านไฟล์ Excel
+        # อ่านไฟล์พรีวิวด้านหน้าเว็บ
         import pandas as pd
-
         df = pd.read_excel(uploaded_excel)
-
         st.write(f"📄 จำนวนข้อมูล : {len(df)} แถว")
 
-        # แสดงตัวอย่างข้อมูล
+        # แสดงตัวอย่างข้อมูลดิบก่อนประมวลผล
         with st.expander("👀 Preview Excel"):
             st.dataframe(df)
 
-        # ปุ่มวิเคราะห์
-        if st.button("🚀 วิเคราะห์ด้วย AI", key="excel_ai_button"):
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # ปุ่มสั่งการทำงานวิเคราะห์ด้วย AI
+        if st.button("🚀 วิเคราะห์ด้วย AI", key="excel_ai_button_tab3"):
+            
+            import json
+            from openai import OpenAI
+            from openpyxl import load_workbook
+            from openpyxl.styles import Font, PatternFill, Alignment
+            from openpyxl.utils import get_column_letter
 
-            progress = st.progress(0)
+            # เชื่อมต่อ API Key ผ่านระบบ Streamlit Secrets ของคุณ
+            api_key = st.secrets.get("DEEPSEEK_API_KEY", os.environ.get("DEEPSEEK_API_KEY", "YOUR_API_KEY"))
+            client = OpenAI(
+                base_url="https://deepseek.com",
+                api_key=api_key
+            )
+
             status = st.empty()
+            status.info("⏳ กำลังเริ่มต้นแกะรหัสเพื่อล็อกพิกัดตารางและสีไฮไลต์ดั้งเดิมของธนาคาร...")
 
-            for i in range(100):
-                progress.progress(i + 1)
-                status.text(f"กำลังวิเคราะห์... {i+1}%")
-
-            st.success("✅ วิเคราะห์เสร็จแล้ว")
-
-            st.dataframe(df)
-
+            # ตั้งค่าบันทึกไฟล์ชั่วคราวลงหน่วยความจำเครื่อง
+            file_name = "temp_input_bank.xlsx"
             output_name = "Excel_AI_Result.xlsx"
+            sheet_name = "ATM_1-30Sep24" # ชื่อ Sheet เป้าหมายดั้งเดิม
 
-            with pd.ExcelWriter(output_name, engine="openpyxl") as writer:
-                df.to_excel(writer, index=False)
+            with open(file_name, "wb") as f_temp:
+                f_temp.write(uploaded_excel.getbuffer())
 
-            with open(output_name, "rb") as f:
-                st.download_button(
-                    "📥 ดาวน์โหลดผลลัพธ์",
-                    f,
-                    file_name=output_name,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+            try:
+                # ตรวจเช็กระบบป้องกันไฟล์พังเงียบ
+                wb_check = load_workbook(file_name, read_only=True)
+                if sheet_name not in wb_check.sheetnames:
+                    st.error(f"❌ ไม่พบ Sheet ชื่อ '{sheet_name}' ในไฟล์ Excel (ตรวจพบชีตชื่อ: {', '.join(wb_check.sheetnames)})")
+                    if os.path.exists(file_name): os.remove(file_name)
+                    st.stop()
+                wb_check.close()
+
+                # 1. เปิดไฟล์ผ่าน openpyxl โดยตรงเพื่อคงสไตล์ ฟอนต์ และสีเดิมไว้ 100%
+                wb = load_workbook(file_name)
+                ws = wb[sheet_name]
+
+                # 2. ค้นหาแถวหัวตาราง (Header Row) อัตโนมัติจากชุดข้อมูลจริง
+                header_row_idx = None
+                for row_idx in range(1, ws.max_row + 1):
+                    row_values = [str(ws.cell(row=row_idx, column=col_idx).value).strip() for col_idx in range(1, ws.max_column + 1)]
+                    if "Problem_Detail" in row_values:
+                        header_row_idx = row_idx
+                        break
+
+                if header_row_idx is None:
+                    st.error("❌ หาหัวตารางคอลัมน์ 'Problem_Detail' ในหน้า Excel ไม่พบ")
+                    st.stop()
+
+                # แกะหมายเลขคอลัมน์เป้าหมาย
+                header_cells = [str(ws.cell(row=header_row_idx, column=c).value).strip() for c in range(1, ws.max_column + 1)]
+                prob_col_idx = header_cells.index("Problem_Detail") + 1
+                solv_col_idx = header_cells.index("solving_problem") + 1 if "solving_problem" in header_cells else ws.max_column + 1
+
+                if "solving_problem" not in header_cells:
+                    ws.cell(row=header_row_idx, column=solv_col_idx, value="solving_problem")
+                    ws.cell(row=header_row_idx, column=solv_col_idx).font = Font(name="Cordia New", size=14, bold=True)
+
+                start_data_row = header_row_idx + 1
+                total_rows = ws.max_row - start_data_row + 1
+                
+                def local_clean(text):
+                    return " ".join(str(text).replace("\n", " ").replace("\r", " ").split()).strip()
+
+                # ตั้งค่าสีไฮไลต์ครีมจางๆ (FFF2CC) สำหรับกำกับความโปร่งใสช่องข้อมูลจุดใหม่ที่ AI กรอกให้
+                ai_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+
+                progress_bar = st.progress(0)
+                processed_count = 0
+
+                # 3. วนลูปประมวลผลผ่าน Hybrid Check ร่วมกับ DeepSeek-v4-flash
+                for idx, r_idx in enumerate(range(start_data_row, ws.max_row + 1)):
+                    raw_prob = local_clean(ws.cell(row=r_idx, column=prob_col_idx).value or "")
+                    raw_solv = local_clean(ws.cell(row=r_idx, column=solv_col_idx).value or "")
+
+                    # อัปเดต % บาร์ความคืบหน้าโหลดบนหน้าเว็บ Streamlit
+                    current_percent = int(((idx + 1) / total_rows) * 100)
+                    progress_bar.progress(min(current_percent, 100))
+                    status.text(f"🧠 DeepSeek-v4-flash กำลังสแกนคัดแยกคำเทคนิค... {current_percent}% (แถวที่ {idx + 1}/{total_rows})")
+
+                    if raw_prob == "" and raw_solv == "":
+                        continue
+
+                    # 🧠 [แผนที่ 1]: วิ่งผ่านฟังก์ชันสแกนคำและดักรหัสตัวเก่งดั้งเดิมของคุณก่อน
+                    log_result, _ = process_log_line(raw_prob)
+
+                    # ถ้าคู่มือแมนนวลซ่อม 3 แสนแถวเดิมดักจับคำตอบได้สำเร็จ
+                    if log_result and log_result.get("solution") != "No manual suggestion available for this specific keyword.":
+                        final_thai_prob = f"แจ้ง {raw_prob}" if not raw_prob.startswith("แจ้ง") else raw_prob
+                        
+                        db_sol_text = local_clean(log_result["solution"])
+                        final_thai_solv = f"แก้ไข {db_sol_text}" if not db_sol_text.startswith("แก้ไข") else db_sol_text
+                        
+                        ws.cell(row=r_idx, column=prob_col_idx, value=final_thai_prob)
+                        ws.cell(row=r_idx, column=solv_col_idx, value=final_thai_solv)
+                        processed_count += 1
+
+                    # 🧠 [แผนที่ 2]: หากข้อมูลหลุดคลังเดิม ให้ส่งให้ DeepSeek-v4-flash ช่วยวิเคราะห์เกลาคำ
+                    else:
+                        try:
+                            system_prompt = (
+                                "คุณคือ AI ผู้เชี่ยวชาญระบบ ATM ที่ทำหน้าที่แปลและสรุป Log เทคนิคให้เป็นภาษาไทยที่พนักงานธนาคารอ่านเข้าใจง่ายทันที\n"
+                                "เงื่อนไขข้อบังคับที่ต้องปฏิบัติตามอย่างเคร่งครัด:\n"
+                                "1. สำหรับหัวข้อ 'Problem_Detail' ข้อความผลลัพธ์จะต้องขึ้นต้นด้วยคำว่า 'แจ้ง ' เสมอ แล้วตามด้วยเนื้อหาปัญหาภาษาไทยที่แปลเอาศัพท์ช่างภาษาอังกฤษออกไปแล้ว\n"
+                                "2. สำหรับหัวข้อ 'Solving_Problem' ข้อความผลลัพธ์จะต้องขึ้นต้นด้วยคำว่า 'แก้ไข ' เสมอ แล้วตามด้วยเนื้อหาวิธีแก้ภาษาไทยที่พนักงานธนาคารทั่วไปอ่านเข้าใจง่าย หากไม่มีข้อมูลวิธีแก้ ให้เขียนว่า 'แก้ไข ตรวจสอบระบบตามมาตรฐาน'\n"
+                                "3. ผลลัพธ์ที่ตอบกลับมาให้ตอบในรูปแบบ JSON เท่านั้น ห้ามมีข้อความอธิบายอื่นเด็ดขาด โครงสร้างคือ:\n"
+                                '{"problem": "แจ้ง ...", "solution": "แก้ไข ..."}'
+                            )
+                            user_prompt = f"ข้อมูลดิบหน้างาน:\nProblem_Detail: {raw_prob}\nSolving_Problem: {raw_solv}"
+
+                            response = client.chat.completions.create(
+                                model="deepseek-v4-flash",
+                                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+                                temperature=0.2,
+                                response_format={"type": "json_object"}
+                            )
+
+                            ai_result = json.loads(response.choices.message.content.strip())
+                            final_thai_prob = ai_result.get("problem", f"แจ้ง {raw_prob}")
+                            final_thai_solv = ai_result.get("solution", f"แก้ไข {raw_solv}")
+
+                            # เขียนข้อมูลทับเซลล์เดิมโดยตรง (สีตารางและสีไฮไลต์ดั้งเดิมของธนาคารจะไม่พัง)
+                            cell_p = ws.cell(row=r_idx, column=prob_col_idx, value=final_thai_prob)
+                            cell_s = ws.cell(row=r_idx, column=solv_col_idx, value=final_thai_solv)
+                            
+                            # ถมสีครีมบางๆ บอกตำแหน่งช่องข้อมูลที่ AI ช่วยพิมพ์คำให้ใหม่
+                            cell_p.fill = ai_fill
+                            cell_s.fill = ai_fill
+                            processed_count += 1
+
+                        except Exception as api_err:
+                            if not raw_prob.startswith("แจ้ง"):
+                                ws.cell(row=r_idx, column=prob_col_idx, value=f"แจ้ง {raw_prob}")
+                            if not raw_solv.startswith("แก้ไข") and raw_solv != "":
+                                ws.cell(row=r_idx, column=solv_col_idx, value=f"แก้ไข {raw_solv}")
+
+                # 4. ปรับขนาดหน้าจอความกว้างช่องคอลัมน์กว้างพิเศษ (Auto-fit Width ข้อความไทยไม่โดนตัดขอบ)
+                status.text("⚙️ กำลังจัดระเบียบขนาดหน้าจอความกว้างคอลัมน์อัตโนมัติ...")
+                for col_idx in range(1, ws.max_column + 1):
+                    max_length = 0
+                    column_letter = get_column_letter(col_idx)
+                    for row_search in range(1, ws.max_row + 1):
+                        cell_v = ws.cell(row=row_search, column=col_idx).value
+                        if cell_v:
+                            cell_str = str(cell_v)
+                            thai_len = len(cell_str.encode('utf-8'))
+                            eng_len = len(cell_str)
+                            display_len = int((thai_len + eng_len) / 2)
+                            if display_len > max_length:
+                                max_length = display_len
+                    calculated_width = max_length + 6
             
 
 
