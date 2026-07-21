@@ -36,6 +36,32 @@ st.markdown(
         color: #f3f4f6;
         font-family: 'Kanit', sans-serif;
     }
+	/* แก้ช่องพิมพ์ให้เห็นข้อความชัดเจน */
+div[data-baseweb="input"] {
+    background-color: #ffffff !important;
+}
+
+div[data-baseweb="input"] input {
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+    caret-color: #111827 !important;
+}
+
+/* แก้ช่องข้อความหลายบรรทัด */
+div[data-baseweb="textarea"] textarea {
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+    caret-color: #111827 !important;
+    background-color: #ffffff !important;
+}
+
+/* สีข้อความตัวอย่างก่อนพิมพ์ */
+div[data-baseweb="input"] input::placeholder,
+div[data-baseweb="textarea"] textarea::placeholder {
+    color: #6b7280 !important;
+    -webkit-text-fill-color: #6b7280 !important;
+    opacity: 1 !important;
+}
 
     .ultra-title {
         background: linear-gradient(135deg, #38bdf8 10%, #6366f1 50%, #34d399 90%);
