@@ -1415,6 +1415,24 @@ hr {
     }
 
 }
+/* ===== แก้เฉพาะช่อง "คำถามประกอบรูปภาพ" ===== */
+
+div[data-testid="stTextInput"] input {
+    background-color: #081a35 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    caret-color: #38bdf8 !important;
+}
+
+div[data-testid="stTextInput"] input::placeholder {
+    color: #9fb5d6 !important;
+}
+
+div[data-testid="stTextInput"] div[data-baseweb="input"] {
+    background-color: #081a35 !important;
+    border: 1px solid #3b82f6 !important;
+    border-radius: 10px !important;
+}
 
 </style>
 
