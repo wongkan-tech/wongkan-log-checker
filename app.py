@@ -5962,9 +5962,10 @@ st.markdown("""
     /* ช่องพิมพ์ Chat */
     div[data-testid="stChatInput"] textarea {
 
-        color: #111827 !important;
-        -webkit-text-fill-color: #111827 !important;
-        background-color: #ffffff !important;
+color: #ffffff !important;
+-webkit-text-fill-color: #ffffff !important;
+background-color: #081a35 !important;
+caret-color: #38bdf8 !important;
 
     }
 
