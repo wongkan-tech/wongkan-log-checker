@@ -39,9 +39,9 @@ st.set_page_config(page_title="ATM Log Intelligence Center", layout="wide")
 st.markdown("""
     <style>
     /* นำเข้าฟอนต์ Google Fonts เพื่อความพรีเมียม */
-    @import url('https://googleapis.com');
-	
-	/* 1. มิติพื้นหลังห้องคอนโทรลรูมข้ามจักรวาล (Deep Space Void Grid) */
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
+    /* 1. มิติพื้นหลังห้องคอนโทรลรูมข้ามจักรวาล (Deep Space Void Grid) */
     .stApp {
         background-color: #030712;
         background-image: 
@@ -3965,7 +3965,7 @@ manual_db = {
         "CHIP": "502019975 CONTACT ASSY CRT-350N หัวชิบการ์ด",
         "PAPER FAULT": "USB communication error ErrCode 1375"
 
-	}
+    }
 # =========================================================================
 # --- [ส่วนที่ 3: ระบบประมวลผลดั้งเดิม ปรับปรุงฟังก์ชันตรวจจับโค้ดข้ามเวลาตัวเก่งล่าสุด] ---
 # =========================================================================
@@ -3973,13 +3973,19 @@ manual_db = {
 def process_log_line(line):
     line_upper = line.upper()
     
-    # 1. ตรวจจับเรื่องกระดาษติด (PAPER FAULT / FAULT) ของเดิมของคุณเป๊ะๆ
-    if "PAPER FAULT" in line_upper or "FAULT" in line_upper:
+    # 1. ตรวจจับ PAPER FAULT เฉพาะกรณีที่มีคำนี้จริง
+    # ห้ามใช้เพียงคำว่า FAULT เพราะจะทำให้ Fault ของอุปกรณ์อื่นถูกระบุผิดเป็นกระดาษติด
+    if "PAPER FAULT" in line_upper:
+        time_match = re.search(r"\d{2}:\d{2}:\d{2}(?:\.\d+)?", line)
+        log_time = time_match.group(0) if time_match else "Unknown Time"
         return {
-            "time": "Unknown-Time",
+            "time": log_time,
             "reason": "PAPER FAULT",
             "line": line.strip(),
-            "solution": "USB communication error ErrCode 1375"
+            "solution": manual_db.get(
+                "PAPER FAULT",
+                "ตรวจสอบกระดาษ เครื่องพิมพ์ สาย USB/Communication และ Error Code ที่เกี่ยวข้อง"
+            )
         }, None
            
     # 2. ตรวจจับเรื่อง RECOVERY FAIL ของเดิมของคุณเป๊ะๆ
@@ -3990,8 +3996,11 @@ def process_log_line(line):
     if "MAXIMUM RETRACT FAIL" in line_upper:
         return None, "retract_fail"
     
-    # ระบบคัดกรองคำมั่วและข้อมูลหน้าสลิปที่ไม่จำเป็นออกไปแบบรวบยอด ของเดิมของคุณเป๊ะๆ
-    if any(keyword in line_upper for keyword in ["BILL", "REF", "CARD", "PRINTER", "RECEIPT", "TERMINAL", "OPCODE", "AMOUNT", "SEQUENCE", "S0_I", "1000A", "1000B", "00100", "00500"]):
+    # คัดกรองข้อมูลธุรกรรมที่ไม่ใช่ Error แต่ไม่ตัด CARD/PRINTER แบบเหมารวม
+    # เพราะสองคำนี้อาจเป็นเหตุขัดข้องของอุปกรณ์จริง
+    noise_keywords = ["BILL", "REF", "RECEIPT", "OPCODE", "AMOUNT", "SEQUENCE", "S0_I"]
+    has_error_signal = any(word in line_upper for word in ERROR_KEYWORDS)
+    if not has_error_signal and any(keyword in line_upper for keyword in noise_keywords):
         return None, None
         
     is_matched = False
@@ -4089,6 +4098,16 @@ def process_log_line(line):
         
     return None, None
 
+def decode_uploaded_bytes(raw_bytes):
+    """ถอดรหัสไฟล์ Log โดยรองรับ UTF-8 และภาษาไทยจากระบบ Windows"""
+    for encoding in ("utf-8-sig", "utf-8", "cp874", "tis-620", "latin-1"):
+        try:
+            return raw_bytes.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw_bytes.decode("utf-8", errors="replace")
+
+
 # --- ฟังก์ชันตัวช่วยวนลูปเนื้อหา Log เพื่อรวบรวมสถิติและผลลัพธ์ ของเดิมของคุณเป๊ะๆ ---
 def analyze_log_content(log_content, filename="File"):
     found_count = 0
@@ -4132,7 +4151,7 @@ with tab1:
                     for member in zip_ref.namelist():
                         if member.lower().endswith(('.txt', '.log', '.data', '.t')) and not member.startswith('__MACOSX'):
                             with zip_ref.open(member) as f:
-                                file_text = f.read().decode('utf-8', errors='ignore')
+                                file_text = decode_uploaded_bytes(f.read())
                                 res_list, rec, ret, f_cnt = analyze_log_content(file_text, member)
                                 all_results.extend(res_list)
                                 total_recovery += rec
@@ -4143,7 +4162,7 @@ with tab1:
                 st.error(f"❌ ไม่สามารถอ่านไฟล์ Zip ได้: {e}")
         else:
             try:
-                log_content = uploaded_file.read().decode('utf-8', errors='ignore')
+                log_content = decode_uploaded_bytes(uploaded_file.read())
                 all_results, total_recovery, total_retract_fail, total_found = analyze_log_content(log_content, uploaded_file.name)
                 st.success("🎉 วิเคราะห์ไฟล์ข้อความสำเร็จ!")
             except Exception as e:
@@ -4224,7 +4243,7 @@ with tab2:
 # ย้ายคลังกล่องลิงก์ดาวน์โหลดคู่มือให้สะท้อนเงาสวยงาม
 st.markdown("""
     <div class="folder-link-box">
-        🔑 <b>RESOURCE LINK:</b> <a href="https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec`" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">
+        🔑 <b>RESOURCE LINK:</b> <a href="https://1drv.ms/f/c/dc153466201293bf/IgC_kxIgZjQVIIDcaAAAAAAAATYWqRJEJ5S6Y_oATotMUDs?e=7N8Vec" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">
         [ดาวน์โหลดคู่มือทั้งหมด ผ่าน OneDrive]
         </a>
     </div>
@@ -4237,8 +4256,6 @@ st.markdown("<div style='border-top: 1px solid rgba(255,255,255,0.05); margin-bo
 # --- [ส่วน AI ใหม่ : ATM Technical Intelligence AI]
 # --- ตอนที่ 1/4 : เชื่อมต่อ DeepSeek + ระบบ Session
 # =========================================================================
-
-from openai import OpenAI
 
 DEEPSEEK_API_KEY = st.secrets.get("DEEPSEEK_API_KEY")
 
@@ -4412,7 +4429,7 @@ if prompt:
 
     with st.chat_message("user"):
         st.markdown(prompt)
-		# =========================================================================
+        # =========================================================================
 # --- ตอนที่ 2/4 : ค้นหา Manual DB ก่อน (ใช้ฟรี)
 # =========================================================================
 
@@ -4429,20 +4446,24 @@ if prompt:
 
     if "manual_db" in globals():
 
-        for key, value in manual_db.items():
+        # ค้นหาแบบตรงรหัสก่อน แล้วจึงค้นหาแบบข้อความ พร้อมจำกัดผลลัพธ์
+        exact_key = prompt.strip()
+        if exact_key in manual_db:
+            matches.append(
+                f"📌 **รหัส / คำสำคัญ : {exact_key}**\n\n{manual_db[exact_key]}"
+            )
+        else:
+            for key, value in manual_db.items():
+                key_text = str(key).lower()
+                value_text = str(value).lower()
 
-            key_text = str(key).lower()
-            value_text = str(value).lower()
+                if key_text in prompt_lower or prompt_lower in value_text:
+                    matches.append(
+                        f"📌 **รหัส / คำสำคัญ : {key}**\n\n{value}"
+                    )
 
-            if (
-                key_text in prompt_lower
-                or prompt_lower in key_text
-                or prompt_lower in value_text
-            ):
-
-                matches.append(
-                    f"📌 **รหัส / คำสำคัญ : {key}**\n\n{value}"
-                )
+                if len(matches) >= 20:
+                    break
 
 
     # ===============================
@@ -4483,7 +4504,7 @@ if prompt:
             "content": st.session_state.manual_result
         }
     )
-	# =========================================================================
+    # =========================================================================
 # --- ตอนที่ 3/4 : ปุ่มวิเคราะห์ด้วย AI (เรียก DeepSeek เมื่อกดเท่านั้น)
 # =========================================================================
 
@@ -4507,7 +4528,7 @@ if st.session_state.current_prompt:
 
                 response = client.chat.completions.create(
 
-                    model="deepseek-chat",
+                    model=st.secrets.get("TEXT_MODEL", "deepseek-chat"),
 
                     temperature=0.2,
 
@@ -4650,7 +4671,7 @@ if st.session_state.ai_answer:
     show_ai_export_buttons(st.session_state.ai_answer)
 
 
-				# =========================================================================
+                # =========================================================================
 # --- ตอนที่ 4/4 : ตกแต่งหน้าตา Chat AI
 # =========================================================================
 
