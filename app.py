@@ -36,127 +36,1375 @@ st.set_page_config(page_title="ATM Log Intelligence Center", layout="wide")
 # =========================================================================
 # --- [ส่วนที่ 2: มหากาพย์ CSS ดีไซน์ระดับโลก (Advanced Cyber Metallic Neon) ⭐⭐⭐⭐⭐] ---
 # =========================================================================
+# =========================================================================
+
+# --- [ส่วนที่ 2: Dashboard Theme — Dark Navy Neon Enterprise] ---
+
+# =========================================================================
+
 st.markdown("""
-    <style>
-    /* นำเข้าฟอนต์ Google Fonts เพื่อความพรีเมียม */
-    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-    
-    /* 1. มิติพื้นหลังห้องคอนโทรลรูมข้ามจักรวาล (Deep Space Void Grid) */
-    .stApp {
-        background-color: #030712;
-        background-image: 
-            radial-gradient(at 0% 0%, rgba(31, 41, 234, 0.12) 0px, transparent 50%),
-            radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%),
-            radial-gradient(at 50% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%);
-        color: #f3f4f6;
-        font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
+
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* =========================================================
+
+   1. พื้นฐานทั้งระบบ
+
+   ========================================================= */
+
+html,
+
+body,
+
+[class*="css"] {
+
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
+
+}
+
+.stApp {
+
+    background:
+
+        radial-gradient(
+
+            circle at 15% 0%,
+
+            rgba(37, 99, 235, 0.12),
+
+            transparent 30%
+
+        ),
+
+        radial-gradient(
+
+            circle at 85% 15%,
+
+            rgba(59, 130, 246, 0.08),
+
+            transparent 28%
+
+        ),
+
+        radial-gradient(
+
+            circle at 50% 100%,
+
+            rgba(30, 64, 175, 0.10),
+
+            transparent 38%
+
+        ),
+
+        linear-gradient(
+
+            145deg,
+
+            #020617 0%,
+
+            #071126 45%,
+
+            #020817 100%
+
+        );
+
+    color: #e5eefc;
+
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
+
+}
+
+/* ลดพื้นที่ว่างด้านบน */
+
+.block-container {
+
+    max-width: 1500px;
+
+    padding-top: 1.5rem;
+
+    padding-bottom: 3rem;
+
+    padding-left: 2rem;
+
+    padding-right: 2rem;
+
+}
+
+/* ซ่อนเมนู Streamlit ด้านบนบางส่วน */
+
+#MainMenu {
+
+    visibility: hidden;
+
+}
+
+footer {
+
+    visibility: hidden;
+
+}
+
+/* =========================================================
+
+   2. Header และชื่อระบบ
+
+   ========================================================= */
+
+.ultra-title {
+
+    margin: 0;
+
+    padding: 0;
+
+    color: #f8fbff;
+
+    font-size: 2.25rem;
+
+    line-height: 1.2;
+
+    font-weight: 800;
+
+    letter-spacing: -0.8px;
+
+    text-shadow:
+
+        0 0 18px rgba(59, 130, 246, 0.20),
+
+        0 0 35px rgba(37, 99, 235, 0.12);
+
+}
+
+.ultra-title::first-letter {
+
+    color: #38bdf8;
+
+}
+
+.sub-text {
+
+    color: #8ea5c9;
+
+    font-size: 0.96rem;
+
+    line-height: 1.75;
+
+    margin-top: 0.35rem;
+
+    margin-bottom: 1.4rem;
+
+    letter-spacing: 0.15px;
+
+}
+
+/* หัวข้อปกติของ Streamlit */
+
+h1,
+
+h2,
+
+h3,
+
+h4 {
+
+    color: #f4f8ff !important;
+
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif !important;
+
+}
+
+h2 {
+
+    font-size: 1.45rem !important;
+
+    font-weight: 700 !important;
+
+}
+
+h3 {
+
+    font-size: 1.15rem !important;
+
+    font-weight: 700 !important;
+
+    color: #dce9ff !important;
+
+}
+
+/* =========================================================
+
+   3. กล่อง Card หลัก
+
+   ========================================================= */
+
+.log-card {
+
+    position: relative;
+
+    overflow: hidden;
+
+    background:
+
+        linear-gradient(
+
+            145deg,
+
+            rgba(14, 27, 52, 0.94),
+
+            rgba(5, 13, 30, 0.97)
+
+        );
+
+    border: 1px solid rgba(59, 130, 246, 0.35);
+
+    border-radius: 15px;
+
+    padding: 22px;
+
+    margin-bottom: 18px;
+
+    box-shadow:
+
+        0 16px 45px rgba(0, 0, 0, 0.28),
+
+        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+
+        0 0 0 1px rgba(15, 23, 42, 0.55);
+
+    transition:
+
+        transform 0.25s ease,
+
+        border-color 0.25s ease,
+
+        box-shadow 0.25s ease;
+
+}
+
+.log-card::before {
+
+    content: "";
+
+    position: absolute;
+
+    top: 0;
+
+    left: 0;
+
+    right: 0;
+
+    height: 2px;
+
+    background:
+
+        linear-gradient(
+
+            90deg,
+
+            transparent,
+
+            #2563eb,
+
+            #38bdf8,
+
+            transparent
+
+        );
+
+    opacity: 0.8;
+
+}
+
+.log-card:hover {
+
+    transform: translateY(-2px);
+
+    border-color: rgba(56, 189, 248, 0.65);
+
+    box-shadow:
+
+        0 20px 55px rgba(0, 0, 0, 0.35),
+
+        0 0 24px rgba(37, 99, 235, 0.10),
+
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+}
+
+/* =========================================================
+
+   4. File uploader
+
+   ========================================================= */
+
+[data-testid="stFileUploader"] {
+
+    background:
+
+        linear-gradient(
+
+            145deg,
+
+            rgba(12, 25, 48, 0.96),
+
+            rgba(4, 12, 28, 0.98)
+
+        );
+
+    border: 1px solid rgba(59, 130, 246, 0.48);
+
+    border-radius: 15px;
+
+    padding: 12px;
+
+    box-shadow:
+
+        0 12px 35px rgba(0, 0, 0, 0.24),
+
+        inset 0 1px 0 rgba(255, 255, 255, 0.035);
+
+}
+
+/* พื้นที่ลากไฟล์ */
+
+[data-testid="stFileUploaderDropzone"] {
+
+    background:
+
+        linear-gradient(
+
+            135deg,
+
+            rgba(18, 38, 72, 0.88),
+
+            rgba(7, 18, 40, 0.94)
+
+        ) !important;
+
+    border: 1px dashed rgba(56, 189, 248, 0.55) !important;
+
+    border-radius: 12px !important;
+
+    min-height: 110px;
+
+    transition:
+
+        border-color 0.25s ease,
+
+        background 0.25s ease,
+
+        box-shadow 0.25s ease;
+
+}
+
+[data-testid="stFileUploaderDropzone"]:hover {
+
+    background:
+
+        linear-gradient(
+
+            135deg,
+
+            rgba(24, 52, 97, 0.94),
+
+            rgba(8, 24, 52, 0.96)
+
+        ) !important;
+
+    border-color: #38bdf8 !important;
+
+    box-shadow: 0 0 22px rgba(56, 189, 248, 0.12);
+
+}
+
+/* ตัวอักษรภายใน Upload */
+
+[data-testid="stFileUploaderDropzone"] div,
+
+[data-testid="stFileUploaderDropzone"] span,
+
+[data-testid="stFileUploaderDropzone"] small {
+
+    color: #c9dcf8 !important;
+
+}
+
+/* ปุ่ม Browse files */
+
+[data-testid="stFileUploaderDropzone"] button {
+
+    background:
+
+        linear-gradient(
+
+            135deg,
+
+            #1d4ed8,
+
+            #0284c7
+
+        ) !important;
+
+    color: #ffffff !important;
+
+    border: 1px solid rgba(125, 211, 252, 0.35) !important;
+
+    border-radius: 9px !important;
+
+    font-weight: 700 !important;
+
+    box-shadow:
+
+        0 8px 20px rgba(2, 132, 199, 0.22) !important;
+
+}
+
+[data-testid="stFileUploaderDropzone"] button:hover {
+
+    background:
+
+        linear-gradient(
+
+            135deg,
+
+            #2563eb,
+
+            #06b6d4
+
+        ) !important;
+
+    border-color: #7dd3fc !important;
+
+}
+
+/* รายการไฟล์ที่อัปโหลดแล้ว */
+
+[data-testid="stFileUploaderFile"] {
+
+    background: rgba(8, 20, 42, 0.92) !important;
+
+    border: 1px solid rgba(59, 130, 246, 0.28) !important;
+
+    border-radius: 10px !important;
+
+    color: #dce9ff !important;
+
+}
+
+[data-testid="stFileUploaderFileName"] {
+
+    color: #f2f7ff !important;
+
+}
+
+/* =========================================================
+
+   5. ปุ่มทั่วไป
+
+   ========================================================= */
+
+div.stButton > button {
+
+    min-height: 44px;
+
+    background:
+
+        linear-gradient(
+
+            135deg,
+
+            #1d4ed8 0%,
+
+            #0369a1 100%
+
+        ) !important;
+
+    color: #ffffff !important;
+
+    border: 1px solid rgba(96, 165, 250, 0.45) !important;
+
+    border-radius: 10px !important;
+
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif !important;
+
+    font-size: 0.93rem !important;
+
+    font-weight: 700 !important;
+
+    letter-spacing: 0.1px !important;
+
+    box-shadow:
+
+        0 8px 20px rgba(29, 78, 216, 0.22) !important;
+
+    transition:
+
+        transform 0.2s ease,
+
+        box-shadow 0.2s ease,
+
+        border-color 0.2s ease !important;
+
+}
+
+div.stButton > button:hover {
+
+    color: #ffffff !important;
+
+    background:
+
+        linear-gradient(
+
+            135deg,
+
+            #2563eb 0%,
+
+            #0891b2 100%
+
+        ) !important;
+
+    border-color: rgba(125, 211, 252, 0.75) !important;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+
+        0 12px 26px rgba(2, 132, 199, 0.28),
+
+        0 0 18px rgba(56, 189, 248, 0.10) !important;
+
+}
+
+div.stButton > button:active {
+
+    transform: translateY(0);
+
+}
+
+/* =========================================================
+
+   6. ปุ่ม Download / Export
+
+   แก้ปัญหาพื้นขาวและตัวอักษรมองไม่เห็น
+
+   ========================================================= */
+
+[data-testid="stDownloadButton"] {
+
+    width: 100%;
+
+}
+
+[data-testid="stDownloadButton"] > button {
+
+    width: 100%;
+
+    min-height: 48px;
+
+    background:
+
+        linear-gradient(
+
+            145deg,
+
+            rgba(13, 31, 61, 0.98),
+
+            rgba(5, 17, 38, 0.98)
+
+        ) !important;
+
+    color: #dbeafe !important;
+
+    border: 1px solid rgba(59, 130, 246, 0.50) !important;
+
+    border-radius: 10px !important;
+
+    font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif !important;
+
+    font-size: 0.92rem !important;
+
+    font-weight: 700 !important;
+
+    box-shadow:
+
+        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+
+        0 8px 18px rgba(0, 0, 0, 0.20) !important;
+
+    transition:
+
+        transform 0.2s ease,
+
+        border-color 0.2s ease,
+
+        background 0.2s ease,
+
+        box-shadow 0.2s ease !important;
+
+}
+
+[data-testid="stDownloadButton"] > button:hover {
+
+    color: #ffffff !important;
+
+    background:
+
+        linear-gradient(
+
+            135deg,
+
+            rgba(29, 78, 216, 0.96),
+
+            rgba(3, 105, 161, 0.96)
+
+        ) !important;
+
+    border-color: #60a5fa !important;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+
+        0 11px 25px rgba(29, 78, 216, 0.25),
+
+        0 0 16px rgba(56, 189, 248, 0.10) !important;
+
+}
+
+[data-testid="stDownloadButton"] > button p,
+
+[data-testid="stDownloadButton"] > button span {
+
+    color: inherit !important;
+
+}
+
+/* =========================================================
+
+   7. Metric cards
+
+   ========================================================= */
+
+[data-testid="stMetric"] {
+
+    background:
+
+        linear-gradient(
+
+            145deg,
+
+            rgba(14, 29, 56, 0.96),
+
+            rgba(5, 15, 34, 0.98)
+
+        );
+
+    border: 1px solid rgba(59, 130, 246, 0.28);
+
+    border-radius: 14px;
+
+    padding: 17px 18px;
+
+    box-shadow:
+
+        0 12px 32px rgba(0, 0, 0, 0.22),
+
+        inset 0 1px 0 rgba(255, 255, 255, 0.035);
+
+    transition:
+
+        transform 0.2s ease,
+
+        border-color 0.2s ease;
+
+}
+
+
+
+[data-testid="stMetric"]:hover {
+
+    transform: translateY(-2px);
+
+    border-color: rgba(56, 189, 248, 0.55);
+
+}
+
+[data-testid="stMetricLabel"] {
+
+    color: #94acd0 !important;
+
+    font-weight: 600 !important;
+
+}
+
+[data-testid="stMetricValue"] {
+
+    color: #f8fbff !important;
+
+    font-weight: 800 !important;
+
+    letter-spacing: -0.4px;
+
+}
+
+[data-testid="stMetricDelta"] {
+
+    color: #4ade80 !important;
+
+}
+
+/* =========================================================
+
+   8. ตาราง DataFrame และตารางข้อมูล
+
+   ========================================================= */
+
+[data-testid="stDataFrame"] {
+
+    background: #061126;
+
+    border: 1px solid rgba(59, 130, 246, 0.28);
+
+    border-radius: 12px;
+
+    overflow: hidden;
+
+    box-shadow:
+
+        0 12px 32px rgba(0, 0, 0, 0.22);
+
+}
+
+[data-testid="stDataFrame"] iframe {
+
+    border-radius: 12px;
+
+}
+
+/* ตาราง HTML */
+
+table {
+
+    width: 100%;
+
+    border-collapse: collapse;
+
+    background: rgba(5, 15, 34, 0.96);
+
+    color: #dce9ff;
+
+}
+
+thead tr th {
+
+    background: #102445 !important;
+
+    color: #bfd7ff !important;
+
+    border-bottom: 1px solid rgba(96, 165, 250, 0.32) !important;
+
+    font-size: 0.82rem;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+}
+
+tbody tr {
+
+    background: rgba(5, 17, 38, 0.96);
+
+}
+
+tbody tr:nth-child(even) {
+
+    background: rgba(8, 23, 49, 0.96);
+
+}
+
+tbody tr:hover {
+
+    background: rgba(30, 64, 175, 0.20);
+
+}
+
+td {
+
+    color: #d8e7ff !important;
+
+    border-bottom: 1px solid rgba(51, 65, 85, 0.42) !important;
+
+}
+
+/* =========================================================
+
+   9. Input, Text area และ Select box
+
+   ========================================================= */
+
+[data-baseweb="input"] > div,
+
+[data-baseweb="textarea"] > div,
+
+[data-baseweb="select"] > div {
+
+    background: rgba(7, 19, 42, 0.96) !important;
+
+    border: 1px solid rgba(59, 130, 246, 0.38) !important;
+
+    border-radius: 10px !important;
+
+    color: #eef6ff !important;
+
+}
+
+input,
+
+textarea {
+
+    color: #eef6ff !important;
+
+    caret-color: #38bdf8 !important;
+
+}
+
+input::placeholder,
+
+textarea::placeholder {
+
+    color: #7186a8 !important;
+
+    opacity: 1 !important;
+
+}
+
+[data-baseweb="select"] span {
+
+    color: #e2edff !important;
+
+}
+
+/* เมนู Selectbox ตอนเปิด */
+
+[data-baseweb="popover"] {
+
+    background: #07152d !important;
+
+}
+
+[role="listbox"] {
+
+    background: #07152d !important;
+
+    border: 1px solid rgba(59, 130, 246, 0.35) !important;
+
+}
+
+[role="option"] {
+
+    color: #dce9ff !important;
+
+}
+
+[role="option"]:hover {
+
+    background: rgba(37, 99, 235, 0.20) !important;
+
+}
+
+/* =========================================================
+
+   10. Tabs
+
+   ========================================================= */
+
+[data-baseweb="tab-list"] {
+
+    gap: 8px;
+
+    background: rgba(6, 16, 36, 0.78);
+
+    border: 1px solid rgba(59, 130, 246, 0.20);
+
+    border-radius: 12px;
+
+    padding: 6px;
+
+}
+
+[data-baseweb="tab"] {
+
+    height: 46px;
+
+    padding-left: 20px !important;
+
+    padding-right: 20px !important;
+
+    border-radius: 8px !important;
+
+    color: #8fa8cc !important;
+
+    font-weight: 700 !important;
+
+}
+
+[data-baseweb="tab"]:hover {
+
+    color: #ffffff !important;
+
+    background: rgba(37, 99, 235, 0.13) !important;
+
+}
+
+[aria-selected="true"][data-baseweb="tab"] {
+
+    color: #ffffff !important;
+
+    background:
+
+        linear-gradient(
+
+            135deg,
+
+            rgba(29, 78, 216, 0.80),
+
+            rgba(3, 105, 161, 0.68)
+
+        ) !important;
+
+    box-shadow:
+
+        0 5px 16px rgba(29, 78, 216, 0.20);
+
+}
+
+/* =========================================================
+
+   11. Expander
+
+   ========================================================= */
+
+[data-testid="stExpander"] {
+
+    background:
+
+        linear-gradient(
+
+            145deg,
+
+            rgba(12, 27, 53, 0.94),
+
+            rgba(5, 15, 33, 0.97)
+
+        );
+
+    border: 1px solid rgba(59, 130, 246, 0.27) !important;
+
+    border-radius: 12px !important;
+
+    overflow: hidden;
+
+}
+
+[data-testid="stExpander"] summary {
+
+    color: #dce9ff !important;
+
+    font-weight: 700 !important;
+
+}
+
+[data-testid="stExpander"] summary:hover {
+
+    background: rgba(37, 99, 235, 0.10) !important;
+
+}
+
+/* =========================================================
+
+   12. Alert และข้อความสถานะ
+
+   ========================================================= */
+
+[data-testid="stAlert"] {
+
+    background: rgba(8, 25, 53, 0.94) !important;
+
+    color: #dce9ff !important;
+
+    border: 1px solid rgba(59, 130, 246, 0.30) !important;
+
+    border-radius: 11px !important;
+
+}
+
+[data-testid="stAlert"] p,
+
+[data-testid="stAlert"] div {
+
+    color: #dce9ff !important;
+
+}
+
+/* =========================================================
+
+   13. Progress bar
+
+   ========================================================= */
+
+[data-testid="stProgress"] > div > div {
+
+    background:
+
+        linear-gradient(
+
+            90deg,
+
+            #2563eb,
+
+            #38bdf8,
+
+            #22d3ee
+
+        ) !important;
+
+}
+
+/* =========================================================
+
+   14. Folder / Resource link box
+
+   ========================================================= */
+
+.folder-link-box {
+
+    background:
+
+        linear-gradient(
+
+            145deg,
+
+            rgba(12, 28, 55, 0.94),
+
+            rgba(5, 16, 35, 0.97)
+
+        );
+
+    border: 1px solid rgba(59, 130, 246, 0.34);
+
+    border-radius: 11px;
+
+    padding: 15px 17px;
+
+    margin-top: 14px;
+
+    margin-bottom: 24px;
+
+    color: #cfe0fb;
+
+    box-shadow:
+
+        inset 0 1px 0 rgba(255, 255, 255, 0.035),
+
+        0 10px 26px rgba(0, 0, 0, 0.18);
+
+    transition:
+
+        border-color 0.22s ease,
+
+        background 0.22s ease,
+
+        transform 0.22s ease;
+
+}
+
+.folder-link-box:hover {
+
+    background:
+
+        linear-gradient(
+
+            145deg,
+
+            rgba(15, 36, 70, 0.98),
+
+            rgba(6, 22, 46, 0.98)
+
+        );
+
+    border-color: rgba(56, 189, 248, 0.72);
+
+    transform: translateY(-1px);
+
+}
+
+.folder-link-box a {
+
+    color: #60a5fa !important;
+
+    font-weight: 700;
+
+    text-decoration: none;
+
+}
+
+.folder-link-box a:hover {
+
+    color: #7dd3fc !important;
+
+    text-decoration: underline;
+
+}
+
+/* =========================================================
+
+   15. ลิงก์ทั่วไป
+
+   ========================================================= */
+
+a {
+
+    color: #60a5fa;
+
+}
+
+a:hover {
+
+    color: #7dd3fc;
+
+}
+
+/* =========================================================
+
+   16. Divider
+
+   ========================================================= */
+
+hr {
+
+    border: none;
+
+    height: 1px;
+
+    background:
+
+        linear-gradient(
+
+            90deg,
+
+            transparent,
+
+            rgba(59, 130, 246, 0.45),
+
+            transparent
+
+        );
+
+    margin-top: 1.4rem;
+
+    margin-bottom: 1.4rem;
+
+}
+
+/* =========================================================
+
+   17. Sidebar ของ Streamlit
+
+   ========================================================= */
+
+[data-testid="stSidebar"] {
+
+    background:
+
+        linear-gradient(
+
+            180deg,
+
+            #050e20 0%,
+
+            #07152d 50%,
+
+            #030a18 100%
+
+        );
+
+    border-right: 1px solid rgba(59, 130, 246, 0.24);
+
+}
+
+[data-testid="stSidebar"] > div:first-child {
+
+    background: transparent;
+
+}
+
+[data-testid="stSidebar"] h1,
+
+[data-testid="stSidebar"] h2,
+
+[data-testid="stSidebar"] h3,
+
+[data-testid="stSidebar"] p,
+
+[data-testid="stSidebar"] label,
+
+[data-testid="stSidebar"] span {
+
+    color: #dce9ff;
+
+}
+
+/* =========================================================
+
+   18. Scrollbar
+
+   ========================================================= */
+
+::-webkit-scrollbar {
+
+    width: 10px;
+
+    height: 10px;
+
+}
+
+::-webkit-scrollbar-track {
+
+    background: #030a18;
+
+}
+
+::-webkit-scrollbar-thumb {
+
+    background:
+
+        linear-gradient(
+
+            180deg,
+
+            #1d4ed8,
+
+            #0369a1
+
+        );
+
+    border-radius: 10px;
+
+    border: 2px solid #030a18;
+
+}
+
+::-webkit-scrollbar-thumb:hover {
+
+    background:
+
+        linear-gradient(
+
+            180deg,
+
+            #2563eb,
+
+            #0891b2
+
+        );
+
+}
+
+/* =========================================================
+
+   19. Responsive สำหรับหน้าจอโน้ตบุ๊ก
+
+   ========================================================= */
+
+@media screen and (max-width: 1100px) {
+
+    .block-container {
+
+        padding-left: 1.1rem;
+
+        padding-right: 1.1rem;
+
     }
-    
-    /* 2. หัวข้อพรีเมียมสามมิติแบบ Dynamic Chroma Text */
+
     .ultra-title {
-        background: linear-gradient(135deg, #38bdf8 10%, #6366f1 50%, #34d399 90%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 800;
-        font-size: 3.2rem;
-        letter-spacing: -1.5px;
-        margin-bottom: 2px;
-        filter: drop-shadow(0 4px 12px rgba(99, 102, 241, 0.35));
-    }
-    
-    /* 3. ยกระดับกล่องการ์ดแนวเหล็กกล้ากระจกเงา (Chrono Cyber Card) */
-    .log-card {
-        background: linear-gradient(145deg, rgba(15, 23, 42, 0.75) 0%, rgba(3, 7, 18, 0.9) 100%);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-radius: 28px;
-        padding: 32px;
-        margin-bottom: 28px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        box-shadow: 
-            0 4px 6px -1px rgba(0, 0, 0, 0.1), 
-            0 2px 4px -1px rgba(0, 0, 0, 0.06),
-            inset 0 1px 1px rgba(255, 255, 255, 0.1);
-        transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    /* โครงขอบเรืองแสงไฟวิ่งนีออนตัดขั้วเวลาวางเมาส์ชี้ (Neon Border Explosion) */
-    .log-card:hover {
-        transform: translateY(-8px) scale(1.005);
-        border-color: rgba(99, 102, 241, 0.5);
-        box-shadow: 
-            0 30px 60px -15px rgba(3, 7, 18, 0.9), 
-            0 0 30px 0 rgba(99, 102, 241, 0.2),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    }
-    
-    /* แถบไฟนีออนวิ่งจำลองแอบซ่อนอยู่ข้างกล่อง */
-    .log-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; width: 4px; height: 100%;
-        background: linear-gradient(to bottom, #38bdf8, #6366f1);
-        border-radius: 4px 0 0 4px;
+
+        font-size: 1.85rem;
+
     }
 
-    /* 4. แปลงโฉมปุ่มกดเป็นบล็อกเหล็กสลักแสงเรือง (Liquid Holographic Button) */
-    div.stButton > button {
-        background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%) !important;
-        color: #ffffff !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        padding: 16px 32px !important;
-        border-radius: 20px !important;
-        font-weight: 800 !important;
-        font-size: 17px !important;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4) !important;
-        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        position: relative;
-    }
-    div.stButton > button:hover {
-        background: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%) !important;
-        transform: translateY(-3px) scale(1.02) !important;
-        box-shadow: 
-            0 20px 35px -5px rgba(79, 70, 229, 0.6),
-            0 0 25px rgba(34, 211, 238, 0.4) !important;
-        letter-spacing: 1.5px;
-    }
-    div.stButton > button:active {
-        transform: translateY(-1px) scale(0.98) !important;
-    }
-
-    /* 5. ลิงก์ดาวน์โหลดสุดเท่ แยกกล่องออกมาเป็นยานแม่ */
-    .folder-link-box {
-        background: rgba(30, 41, 59, 0.3);
-        border: 1px dashed rgba(56, 189, 248, 0.3);
-        border-radius: 16px;
-        padding: 16px;
-        margin-top: 15px;
-        margin-bottom: 30px;
-        transition: all 0.3s;
-    }
-    .folder-link-box:hover {
-        background: rgba(56, 189, 248, 0.05);
-        border-color: #38bdf8;
-    }
-
-    /* ตกแต่งคำบรรยาย */
     .sub-text {
-        color: #9ca3af;
-        font-size: 16px;
-        letter-spacing: 0.2px;
+
+        font-size: 0.88rem;
+
     }
-    </style>
+
+    [data-testid="stMetric"] {
+
+        padding: 14px;
+
+    }
+
+    [data-testid="stDownloadButton"] > button {
+
+        min-height: 44px;
+
+        font-size: 0.84rem !important;
+
+    }
+
+}
+
+@media screen and (max-width: 700px) {
+
+    .block-container {
+
+        padding-top: 1rem;
+
+        padding-left: 0.75rem;
+
+        padding-right: 0.75rem;
+
+    }
+
+    .ultra-title {
+
+        font-size: 1.55rem;
+
+        line-height: 1.3;
+
+    }
+
+    .log-card {
+
+        padding: 16px;
+
+        border-radius: 12px;
+
+    }
+
+}
+
+</style>
+
 """, unsafe_allow_html=True)
 
 # =========================================================================
-# --- [ส่วนที่ 3: ส่วนหน้าเว็บโครงสร้างเหล็กขัดเงาจัดเต็ม] ---
+# --- [ส่วนที่ 3: ส่วนหัว Dashboard] ---
 # =========================================================================
-st.markdown('<h1 class="ultra-title">🖥️  ATM Technical Intelligence</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-text">ระบบวิเคราะห์ไฟลน์ Log ของ ATM เพื่อค้นหาคำสำคัญและแนวทางการแก้ไขอัตโนมัติ</p>', unsafe_allow_html=True)
+st.markdown(
+    '<h1 class="ultra-title">🖥️ ATM Technical Intelligence</h1>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<p class="sub-text">'
+    'ระบบวิเคราะห์ไฟล์ Log ของ ATM เพื่อค้นหาคำสำคัญ '
+    'สาเหตุของปัญหา และแนวทางแก้ไขอัตโนมัติ'
+    '</p>',
+    unsafe_allow_html=True
+)
 
 
 
