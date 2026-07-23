@@ -7,6 +7,39 @@ from datetime import datetime
 import streamlit as st
 import pandas as pd
 from openai import OpenAI
+SKIP_ERROR_CODE_KEYWORDS = [
+    "Terminal Id",
+    "Card Number",
+    "OPCode",
+    "BILL COUNT",
+    "SEQUENCE",
+    "SEQUENCE NO",
+    "Amount Entry Field",
+    "PHONE NO",
+    "FROM ACCOUNT",
+    "WITHDRAWAL AMOUNT",
+    "TRACK2",
+    "TRACK 2",
+    "PAN",
+    "ACCOUNT",
+    "CARD EXPIRY",
+    "AUTH CODE",
+    "APPROVAL CODE",
+    "RRN",
+    "STAN",
+    "TRACE",
+    "REFERENCE NUMBER",
+    "TRANSACTION ID",
+    "AMOUNT",
+    "BALANCE",
+    "CURRENCY",
+    "S0_I0",
+    "S0_I1",
+    "00100",
+    "0500",
+    "1000A",
+    "1000B",
+]
 
 # ไลบรารีสำหรับ Export (ติดตั้งผ่าน requirements.txt)
 try:
