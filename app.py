@@ -1133,6 +1133,41 @@ textarea::placeholder {
             rgba(6, 22, 46, 0.98)
 
         );
+		/* =========================================================
+   แก้ช่องพิมพ์พื้นขาว ตัวอักษรมองไม่เห็น
+   ========================================================= */
+
+/* ช่องพิมพ์แบบข้อความบรรทัดเดียว */
+[data-testid="stTextInput"] input {
+    background-color: #081a35 !important;
+    color: #ffffff !important;
+    border: 1px solid #3b82f6 !important;
+    border-radius: 10px !important;
+    caret-color: #38bdf8 !important;
+}
+
+/* ช่องพิมพ์หลายบรรทัด */
+[data-testid="stTextArea"] textarea {
+    background-color: #081a35 !important;
+    color: #ffffff !important;
+    border: 1px solid #3b82f6 !important;
+    border-radius: 10px !important;
+    caret-color: #38bdf8 !important;
+}
+
+/* ตัวหนังสือคำแนะนำในช่อง */
+[data-testid="stTextInput"] input::placeholder,
+[data-testid="stTextArea"] textarea::placeholder {
+    color: #9fb5d6 !important;
+    opacity: 1 !important;
+}
+
+/* กล่องด้านนอกของช่องพิมพ์ */
+[data-testid="stTextInput"] [data-baseweb="input"],
+[data-testid="stTextArea"] [data-baseweb="textarea"] {
+    background-color: #081a35 !important;
+    border-color: #3b82f6 !important;
+}
 
     border-color: rgba(56, 189, 248, 0.72);
 
