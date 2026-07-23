@@ -1,9 +1,32 @@
 import re
 import os
 import zipfile
+import io
+import base64
+from datetime import datetime
 import streamlit as st
 import pandas as pd
 from openai import OpenAI
+
+# ไลบรารีสำหรับ Export (ติดตั้งผ่าน requirements.txt)
+try:
+    from docx import Document
+    from docx.shared import Pt
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
+
+try:
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_LEFT
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
 
 # =========================================================================
 # --- [ส่วนที่ 1: ตั้งค่าหน้าจอโปรแกรม Streamlit แบบไร้ขอบกว้างเต็มพิกัด] ---
@@ -162,6 +185,340 @@ search_keywords = [
 ERROR_KEYWORDS = ["ERROR", "ERR", "FAILED", "FAIL", "FAULT", "PAPER FAULT"]
 CODE_PATTERN = re.compile(r'-?\d{3,5}')
 
+
+
+# =========================================================================
+# --- [ส่วนเพิ่มใหม่ 1/2 : ฟังก์ชัน Export TXT / Word / PDF] ---
+# =========================================================================
+
+def dataframe_to_txt_bytes(df):
+    """แปลงตารางผลวิเคราะห์เป็นไฟล์ TXT แบบ UTF-8"""
+    lines = []
+    lines.append("ATM TECHNICAL INTELLIGENCE - LOG ANALYSIS REPORT")
+    lines.append("=" * 80)
+    lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append("")
+    for index, row in df.iterrows():
+        lines.append(f"รายการที่ {index + 1}")
+        for column in df.columns:
+            lines.append(f"{column}: {row[column]}")
+        lines.append("-" * 80)
+    return "\n".join(lines).encode("utf-8-sig")
+
+
+def dataframe_to_docx_bytes(df):
+    """แปลงตารางผลวิเคราะห์เป็น Word"""
+    if not DOCX_AVAILABLE:
+        raise RuntimeError("ยังไม่ได้ติดตั้ง python-docx")
+
+    document = Document()
+    document.add_heading("ATM Technical Intelligence - Log Analysis Report", level=1)
+    document.add_paragraph(
+        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+
+    table = document.add_table(rows=1, cols=len(df.columns))
+    table.style = "Table Grid"
+
+    for i, column in enumerate(df.columns):
+        table.rows[0].cells[i].text = str(column)
+
+    for _, row in df.iterrows():
+        cells = table.add_row().cells
+        for i, value in enumerate(row):
+            cells[i].text = str(value)
+
+    for paragraph in document.paragraphs:
+        for run in paragraph.runs:
+            run.font.size = Pt(10)
+
+    output = io.BytesIO()
+    document.save(output)
+    output.seek(0)
+    return output.getvalue()
+
+
+def _register_pdf_font():
+    """เลือกฟอนต์ Unicode ที่มีโอกาสรองรับภาษาไทยบน Streamlit Cloud"""
+    font_candidates = [
+        "/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansThai-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "NotoSansThai-Regular.ttf",
+        "THSarabunNew.ttf",
+    ]
+
+    for font_path in font_candidates:
+        if os.path.exists(font_path):
+            try:
+                pdfmetrics.registerFont(TTFont("ThaiFont", font_path))
+                return "ThaiFont"
+            except Exception:
+                continue
+
+    return "Helvetica"
+
+
+def dataframe_to_pdf_bytes(df):
+    """แปลงตารางผลวิเคราะห์เป็น PDF แนวนอน A4"""
+    if not REPORTLAB_AVAILABLE:
+        raise RuntimeError("ยังไม่ได้ติดตั้ง reportlab")
+
+    output = io.BytesIO()
+    font_name = _register_pdf_font()
+
+    document = SimpleDocTemplate(
+        output,
+        pagesize=landscape(A4),
+        rightMargin=18,
+        leftMargin=18,
+        topMargin=20,
+        bottomMargin=20,
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "ThaiTitle",
+        parent=styles["Heading1"],
+        fontName=font_name,
+        fontSize=15,
+        leading=18,
+        alignment=TA_LEFT,
+    )
+    body_style = ParagraphStyle(
+        "ThaiBody",
+        parent=styles["BodyText"],
+        fontName=font_name,
+        fontSize=7,
+        leading=9,
+        alignment=TA_LEFT,
+    )
+
+    story = [
+        Paragraph("ATM Technical Intelligence - Log Analysis Report", title_style),
+        Paragraph(
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            body_style,
+        ),
+        Spacer(1, 8),
+    ]
+
+    table_data = [
+        [Paragraph(str(column), body_style) for column in df.columns]
+    ]
+
+    for _, row in df.iterrows():
+        table_data.append(
+            [Paragraph(str(value).replace("\n", "<br/>"), body_style) for value in row]
+        )
+
+    page_width = landscape(A4)[0] - 36
+    column_count = max(len(df.columns), 1)
+    column_widths = [page_width / column_count] * column_count
+
+    table = Table(table_data, colWidths=column_widths, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), font_name),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e3a8a")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#94a3b8")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [
+                    colors.white,
+                    colors.HexColor("#f1f5f9"),
+                ]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+
+    story.append(table)
+    document.build(story)
+    output.seek(0)
+    return output.getvalue()
+
+
+def text_report_to_docx_bytes(title, content):
+    """สร้าง Word จากคำตอบ AI"""
+    if not DOCX_AVAILABLE:
+        raise RuntimeError("ยังไม่ได้ติดตั้ง python-docx")
+
+    document = Document()
+    document.add_heading(title, level=1)
+    document.add_paragraph(
+        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+    document.add_paragraph(content)
+
+    output = io.BytesIO()
+    document.save(output)
+    output.seek(0)
+    return output.getvalue()
+
+
+def text_report_to_pdf_bytes(title, content):
+    """สร้าง PDF จากคำตอบ AI"""
+    if not REPORTLAB_AVAILABLE:
+        raise RuntimeError("ยังไม่ได้ติดตั้ง reportlab")
+
+    output = io.BytesIO()
+    font_name = _register_pdf_font()
+    document = SimpleDocTemplate(
+        output,
+        pagesize=A4,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36,
+    )
+
+    body_style = ParagraphStyle(
+        "AIThaiBody",
+        fontName=font_name,
+        fontSize=10,
+        leading=14,
+        alignment=TA_LEFT,
+    )
+    title_style = ParagraphStyle(
+        "AIThaiTitle",
+        fontName=font_name,
+        fontSize=16,
+        leading=20,
+        alignment=TA_LEFT,
+    )
+
+    story = [
+        Paragraph(title, title_style),
+        Spacer(1, 10),
+        Paragraph(
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            body_style,
+        ),
+        Spacer(1, 12),
+    ]
+
+    for paragraph in str(content).split("\n"):
+        safe_paragraph = (
+            paragraph.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
+        story.append(Paragraph(safe_paragraph or "&nbsp;", body_style))
+        story.append(Spacer(1, 4))
+
+    document.build(story)
+    output.seek(0)
+    return output.getvalue()
+
+
+def show_dataframe_export_buttons(df, key_prefix):
+    """แสดงปุ่ม Export ตาราง 3 รูปแบบ"""
+    st.markdown("### 📤 ส่งออกรายงาน")
+    export_col1, export_col2, export_col3 = st.columns(3)
+
+    txt_data = dataframe_to_txt_bytes(df)
+    export_col1.download_button(
+        "📄 ดาวน์โหลด TXT",
+        data=txt_data,
+        file_name="log_analysis_report.txt",
+        mime="text/plain",
+        key=f"{key_prefix}_txt",
+        use_container_width=True,
+    )
+
+    if DOCX_AVAILABLE:
+        try:
+            docx_data = dataframe_to_docx_bytes(df)
+            export_col2.download_button(
+                "📝 ดาวน์โหลด Word",
+                data=docx_data,
+                file_name="log_analysis_report.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key=f"{key_prefix}_docx",
+                use_container_width=True,
+            )
+        except Exception as export_error:
+            export_col2.error(f"Word Error: {export_error}")
+    else:
+        export_col2.warning("ติดตั้ง python-docx เพื่อใช้ Word")
+
+    if REPORTLAB_AVAILABLE:
+        try:
+            pdf_data = dataframe_to_pdf_bytes(df)
+            export_col3.download_button(
+                "📕 ดาวน์โหลด PDF",
+                data=pdf_data,
+                file_name="log_analysis_report.pdf",
+                mime="application/pdf",
+                key=f"{key_prefix}_pdf",
+                use_container_width=True,
+            )
+        except Exception as export_error:
+            export_col3.error(f"PDF Error: {export_error}")
+    else:
+        export_col3.warning("ติดตั้ง reportlab เพื่อใช้ PDF")
+
+
+def show_ai_export_buttons(content):
+    """แสดงปุ่ม Export คำตอบล่าสุดของ AI"""
+    if not content:
+        return
+
+    st.markdown("### 📤 ส่งออกผลวิเคราะห์ล่าสุดจาก AI")
+    export_col1, export_col2, export_col3 = st.columns(3)
+
+    txt_data = str(content).encode("utf-8-sig")
+    export_col1.download_button(
+        "📄 ดาวน์โหลด AI เป็น TXT",
+        data=txt_data,
+        file_name="ai_analysis_report.txt",
+        mime="text/plain",
+        key="ai_export_txt",
+        use_container_width=True,
+    )
+
+    if DOCX_AVAILABLE:
+        try:
+            docx_data = text_report_to_docx_bytes(
+                "ATM Technical Intelligence - AI Analysis",
+                content,
+            )
+            export_col2.download_button(
+                "📝 ดาวน์โหลด AI เป็น Word",
+                data=docx_data,
+                file_name="ai_analysis_report.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key="ai_export_docx",
+                use_container_width=True,
+            )
+        except Exception as export_error:
+            export_col2.error(f"Word Error: {export_error}")
+    else:
+        export_col2.warning("ติดตั้ง python-docx เพื่อใช้ Word")
+
+    if REPORTLAB_AVAILABLE:
+        try:
+            pdf_data = text_report_to_pdf_bytes(
+                "ATM Technical Intelligence - AI Analysis",
+                content,
+            )
+            export_col3.download_button(
+                "📕 ดาวน์โหลด AI เป็น PDF",
+                data=pdf_data,
+                file_name="ai_analysis_report.pdf",
+                mime="application/pdf",
+                key="ai_export_pdf",
+                use_container_width=True,
+            )
+        except Exception as export_error:
+            export_col3.error(f"PDF Error: {export_error}")
+    else:
+        export_col3.warning("ติดตั้ง reportlab เพื่อใช้ PDF")
 
 
 
@@ -3607,7 +3964,8 @@ manual_db = {
         "STACKGUIDE": "603010310001-GA STACKING GUIDE ROLLER FIXING FRAMEASSY",
         "CHIP": "502019975 CONTACT ASSY CRT-350N หัวชิบการ์ด",
         "PAPER FAULT": "USB communication error ErrCode 1375"
-		}
+
+	}
 # =========================================================================
 # --- [ส่วนที่ 3: ระบบประมวลผลดั้งเดิม ปรับปรุงฟังก์ชันตรวจจับโค้ดข้ามเวลาตัวเก่งล่าสุด] ---
 # =========================================================================
@@ -3829,6 +4187,12 @@ with tab1:
             
             csv_data = df_final.to_csv(index=False).encode('utf-8-sig')
             st.download_button(label="📥 ดาวน์โหลดรายงานผลลัพธ์เป็นไฟล์ CSV", data=csv_data, file_name="log_analysis_report.csv", mime="text/csv", key="final_tab1_download_csv_btn")
+
+            # ปุ่ม Export ใหม่: TXT / Word / PDF
+            show_dataframe_export_buttons(
+                df_final,
+                key_prefix="log_table_export",
+            )
         else:
             st.info("ไม่พบข้อมูล Log ใดๆ ที่ตรงตามเงื่อนไขการค้นหาในคลังคำศัพท์")
 
@@ -3909,6 +4273,10 @@ if "ai_answer" not in st.session_state:
     st.session_state.ai_answer = ""
 
 
+if "image_ai_answer" not in st.session_state:
+    st.session_state.image_ai_answer = ""
+
+
 # ===============================
 # แสดงประวัติการสนทนาเดิม
 # ===============================
@@ -3917,6 +4285,108 @@ for message in st.session_state.messages:
 
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+
+
+# ===============================
+# ช่องอัปโหลดรูปภาพเพื่อวิเคราะห์
+# ===============================
+
+st.markdown("### 📷 วิเคราะห์รูปภาพด้วย AI")
+
+uploaded_image = st.file_uploader(
+    "ถ่ายรูปหรือเลือกรูป Error, หน้าจอ ATM, อุปกรณ์ หรือเอกสาร",
+    type=["jpg", "jpeg", "png", "webp"],
+    key="atm_ai_image_uploader",
+)
+
+image_question = st.text_input(
+    "คำถามประกอบรูปภาพ",
+    value="กรุณาวิเคราะห์สิ่งที่เห็นในภาพ ระบุอาการ สาเหตุที่เป็นไปได้ และขั้นตอนตรวจสอบ",
+    key="atm_ai_image_question",
+)
+
+if uploaded_image is not None:
+    st.image(
+        uploaded_image,
+        caption=f"รูปที่เลือก: {uploaded_image.name}",
+        use_container_width=True,
+    )
+
+    if st.button(
+        "🔍 วิเคราะห์รูปภาพด้วย AI",
+        key="analyze_uploaded_image_button",
+        use_container_width=True,
+    ):
+        image_bytes = uploaded_image.getvalue()
+        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+        image_mime = uploaded_image.type or "image/jpeg"
+
+        # สามารถกำหนดโมเดล Vision แยกใน Streamlit Secrets ได้:
+        # VISION_MODEL = "ชื่อโมเดลที่รองรับภาพ"
+        vision_model = st.secrets.get("VISION_MODEL", "deepseek-chat")
+
+        with st.chat_message("assistant"):
+            image_placeholder = st.empty()
+
+            try:
+                image_response = client.chat.completions.create(
+                    model=vision_model,
+                    temperature=0.2,
+                    max_tokens=2000,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "คุณคือ Senior ATM Technical Support Engineer "
+                                "วิเคราะห์ภาพอย่างระมัดระวัง ห้ามเดาข้อความที่อ่านไม่ชัด "
+                                "หากภาพไม่ชัดให้แจ้งว่าต้องถ่ายส่วนใดเพิ่ม "
+                                "ตอบภาษาไทยเป็นหัวข้อ: สิ่งที่พบ, สาเหตุที่เป็นไปได้, "
+                                "จุดตรวจสอบ, วิธีแก้ไข, ข้อควรระวัง และระดับความมั่นใจ"
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": image_question,
+                                },
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": (
+                                            f"data:{image_mime};base64,"
+                                            f"{image_base64}"
+                                        )
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                )
+
+                image_answer = image_response.choices[0].message.content
+                st.session_state.image_ai_answer = image_answer
+                st.session_state.ai_answer = image_answer
+                image_placeholder.markdown(image_answer)
+
+                st.session_state.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": (
+                            f"📷 ผลวิเคราะห์รูป {uploaded_image.name}\n\n"
+                            f"{image_answer}"
+                        ),
+                    }
+                )
+
+            except Exception as image_error:
+                image_placeholder.error(
+                    "❌ โมเดล AI ที่ตั้งค่าอยู่ไม่สามารถวิเคราะห์รูปนี้ได้\n\n"
+                    f"รายละเอียด: {image_error}\n\n"
+                    "กรุณากำหนด VISION_MODEL ใน Streamlit Secrets "
+                    "เป็นโมเดลที่รองรับ image_url แล้วลองใหม่"
+                )
 
 
 # ===============================
@@ -4146,6 +4616,7 @@ if st.session_state.current_prompt:
 
 
                 ai_response = response.choices[0].message.content
+                st.session_state.ai_answer = ai_response
 
 
                 message_placeholder.markdown(
@@ -4168,6 +4639,17 @@ if st.session_state.current_prompt:
                 message_placeholder.error(
                     f"❌ AI Error : {str(e)}"
                 )
+
+
+
+# =========================================================================
+# --- ส่วนส่งออกคำตอบ AI ล่าสุดเป็น TXT / Word / PDF ---
+# =========================================================================
+
+if st.session_state.ai_answer:
+    show_ai_export_buttons(st.session_state.ai_answer)
+
+
 				# =========================================================================
 # --- ตอนที่ 4/4 : ตกแต่งหน้าตา Chat AI
 # =========================================================================
@@ -4242,21 +4724,15 @@ st.markdown("""
 # =========================================================================
 # --- จบระบบ ATM Technical Intelligence AI
 # =========================================================================
-            
 
-
-
-
-            
-
-
-
-
-
-
-
-
-
-
-
-
+# =========================================================================
+# หมายเหตุ requirements.txt
+# เพิ่มแพ็กเกจต่อไปนี้ใน requirements.txt เพื่อใช้งาน Export:
+# python-docx
+# reportlab
+#
+# สำหรับวิเคราะห์รูป:
+# โมเดลที่กำหนดใน VISION_MODEL ต้องรองรับ image_url
+# ตัวอย่าง Streamlit Secrets:
+# VISION_MODEL = "ชื่อโมเดล Vision ที่ผู้ให้บริการของคุณรองรับ"
+# =========================================================================
