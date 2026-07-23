@@ -7,39 +7,6 @@ from datetime import datetime
 import streamlit as st
 import pandas as pd
 from openai import OpenAI
-SKIP_ERROR_CODE_KEYWORDS = [
-    "Terminal Id",
-    "Card Number",
-    "OPCode",
-    "BILL COUNT",
-    "SEQUENCE",
-    "SEQUENCE NO",
-    "Amount Entry Field",
-    "PHONE NO",
-    "FROM ACCOUNT",
-    "WITHDRAWAL AMOUNT",
-    "TRACK2",
-    "TRACK 2",
-    "PAN",
-    "ACCOUNT",
-    "CARD EXPIRY",
-    "AUTH CODE",
-    "APPROVAL CODE",
-    "RRN",
-    "STAN",
-    "TRACE",
-    "REFERENCE NUMBER",
-    "TRANSACTION ID",
-    "AMOUNT",
-    "BALANCE",
-    "CURRENCY",
-    "S0_I0",
-    "S0_I1",
-    "00100",
-    "0500",
-    "1000A",
-    "1000B",
-]
 
 # ไลบรารีสำหรับ Export (ติดตั้งผ่าน requirements.txt)
 try:
@@ -4031,7 +3998,10 @@ def process_log_line(line):
     
     # คัดกรองข้อมูลธุรกรรมที่ไม่ใช่ Error แต่ไม่ตัด CARD/PRINTER แบบเหมารวม
     # เพราะสองคำนี้อาจเป็นเหตุขัดข้องของอุปกรณ์จริง
-    noise_keywords = ["BILL", "REF", "RECEIPT", "OPCODE", "AMOUNT", "SEQUENCE", "S0_I"]
+    noise_keywords = ["BILL", "Terminal Id", "Card Number", Amount Entry Field", "REF", "SEQUENCE NO", 
+	"RECEIPT", "OPCODE", "AMOUNT", "BILL COUNT", "PHONE NO", "FROM ACCOUNT", "WITHDRAWAL AMOUNT",
+ "TRACK2", "TRACK 2", "PAN", "CARD EXPIRY", "APPROVAL CODE", "STAN", "RRN", "AUTH CODE", 
+"TRACE", "REFERENCE NUMBER", "TRANSACTION ID", "BALANCE", "CURRENCY", "SEQUENCE", "1000B", "1000A", "0500", "00100", "S0_I1", "S0_I0",]
     has_error_signal = any(word in line_upper for word in ERROR_KEYWORDS)
     if not has_error_signal and any(keyword in line_upper for keyword in noise_keywords):
         return None, None
