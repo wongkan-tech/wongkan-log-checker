@@ -4,3 +4,5 @@ pandas
 openpyxl
 xlsxwriter
 openai
+python-docx
+reportlab
