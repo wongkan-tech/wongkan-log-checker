@@ -7161,6 +7161,11 @@ if st.session_state.current_prompt:
 {st.session_state.manual_result}
 
 
+ข้อมูลจาก Cash Flow Knowledge Base:
+
+{CASH_FLOW_KNOWLEDGE_BASE}
+
+
 กรุณาวิเคราะห์เพิ่มเติม
 """
                         }
