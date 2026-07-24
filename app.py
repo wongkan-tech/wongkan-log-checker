@@ -1995,6 +1995,7 @@ def analyze_log_content(log_content, filename="File"):
 # ลบหน้าจอ Streamlit ชุดที่ซ้ำออกแล้ว เพื่อป้องกัน DuplicateElementKey
 # ระบบจะใช้หน้าจอชุดสมบูรณ์เพียงชุดเดียวที่อยู่หลัง manual_db
 # ================================================================
+CASH_FLOW_KNOWLEDGE_BASE = """
 NC - Note Cassette
 
 [Knowledge Base]
@@ -3048,7 +3049,7 @@ TDS
 TMM
 NT
 RV
-
+"""
 
 
 
