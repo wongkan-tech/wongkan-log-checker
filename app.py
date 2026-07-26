@@ -6874,7 +6874,7 @@ if uploaded_image is not None:
 
         # สามารถกำหนดโมเดล Vision แยกใน Streamlit Secrets ได้:
         # VISION_MODEL = "ชื่อโมเดลที่รองรับภาพ"
-        vision_model = st.secrets.get("VISION_MODEL", "deepseek-chat")
+        vision_model = st.secrets.get("VISION_MODEL", "deepseek-v4-flash")
 
         with st.chat_message("assistant"):
             image_placeholder = st.empty()
@@ -7062,7 +7062,7 @@ if st.session_state.current_prompt:
 
                 response = client.chat.completions.create(
 
-                    model=st.secrets.get("TEXT_MODEL", "deepseek-chat"),
+                    model = st.secrets.get("TEXT_MODEL", "deepseek-v4-flash")
 
                     temperature=0.2,
 
