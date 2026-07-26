@@ -7062,7 +7062,7 @@ if st.session_state.current_prompt:
 
                 response = client.chat.completions.create(
 
-                    model = st.secrets.get("TEXT_MODEL", "deepseek-v4-flash")
+                    model = st.secrets.get("TEXT_MODEL", "deepseek-v4-flash"),
 
                     temperature=0.2,
 
