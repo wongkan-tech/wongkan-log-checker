@@ -6941,13 +6941,85 @@ if uploaded_image is not None:
 
 
 # ===============================
-# ช่องรับข้อความจากช่าง
+# ช่องอัปโหลดไฟล์ Log ให้ AI วิเคราะห์
 # ===============================
 
-prompt = st.chat_input(
+uploaded_ai_log = st.file_uploader(
+    "📎 อัปโหลดไฟล์ Log ATM ให้ AI วิเคราะห์โดยตรง",
+    type=["txt", "log", "data", "t"],
+    key="deepseek_direct_log_uploader",
+    help="รองรับไฟล์ TXT, LOG, DATA และ T"
+)
+
+uploaded_log_text = ""
+
+if uploaded_ai_log is not None:
+
+    try:
+        uploaded_log_bytes = uploaded_ai_log.getvalue()
+
+        # ทดลองอ่าน Encoding ที่พบบ่อยตามลำดับ
+        for encoding_name in ["utf-8-sig", "utf-8", "cp874", "tis-620", "latin-1"]:
+
+            try:
+                uploaded_log_text = uploaded_log_bytes.decode(encoding_name)
+                break
+
+            except UnicodeDecodeError:
+                continue
+
+        if uploaded_log_text.strip():
+
+            st.success(
+                f"✅ อ่านไฟล์ {uploaded_ai_log.name} สำเร็จ "
+                f"จำนวน {len(uploaded_log_text):,} ตัวอักษร"
+            )
+
+        else:
+            st.warning("ไฟล์ที่อัปโหลดไม่มีข้อความ หรือไม่สามารถอ่านข้อความได้")
+
+    except Exception as e:
+
+        uploaded_log_text = ""
+
+        st.error(
+            f"❌ ไม่สามารถอ่านไฟล์ได้: {e}"
+        )
+
+
+# ปุ่มยืนยันนำไฟล์เข้าสู่ระบบวิเคราะห์
+use_uploaded_log = st.button(
+    "🔍 นำไฟล์ Log นี้ไปค้นหาและวิเคราะห์",
+    key="use_uploaded_log_for_ai",
+    disabled=not bool(uploaded_log_text.strip())
+)
+
+
+# ===============================
+# ช่องรับข้อความจากช่างเดิม
+# ===============================
+
+typed_prompt = st.chat_input(
     "พิมพ์ Error Code หรือวาง Log ATM เพื่อวิเคราะห์..."
 )
 
+
+# ===============================
+# เลือกแหล่งข้อมูลที่จะวิเคราะห์
+# ===============================
+
+prompt = None
+
+# กรณีพิมพ์ข้อความหรือ Error Code
+if typed_prompt:
+
+    prompt = typed_prompt
+
+
+# กรณีกดนำไฟล์ Log ไปวิเคราะห์
+elif use_uploaded_log and uploaded_log_text.strip():
+
+    prompt = uploaded_log_text
 
 if prompt:
 
