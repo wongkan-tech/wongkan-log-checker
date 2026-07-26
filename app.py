@@ -6978,31 +6978,117 @@ if prompt:
     # ค้นหาใน manual_db
     # ===============================
 
-    if "manual_db" in globals():
+if "manual_db" in globals():
 
-        # ค้นหาแบบตรงรหัสก่อน แล้วจึงค้นหาแบบข้อความ พร้อมจำกัดผลลัพธ์
+    # =====================================================
+    # ตรวจจับ Error Code จากคำถาม
+    # รองรับ เช่น:
+    # 15747
+    # Error 15747
+    # Error Code 15747
+    # พบปัญหา -209
+    # =====================================================
+
+    detected_codes = re.findall(
+        r"(?<![A-Za-z0-9])-?\d{2,10}(?![A-Za-z0-9])",
+        prompt
+    )
+
+    # ลบรหัสซ้ำ แต่คงลำดับเดิม
+    detected_codes = list(dict.fromkeys(detected_codes))
+
+    found_keys = set()
+
+    # =====================================================
+    # ค้นหาจาก Error Code ก่อน
+    # =====================================================
+
+    for detected_code in detected_codes:
+
+        code_variants = [
+            detected_code,
+            detected_code.strip(),
+            detected_code.upper(),
+            detected_code.lower(),
+        ]
+
+        # รองรับกรณี key ใน manual_db เป็นตัวเลข
+        try:
+            code_variants.append(int(detected_code))
+        except (ValueError, TypeError):
+            pass
+
+        for code_key in code_variants:
+
+            if code_key in manual_db:
+
+                unique_key = str(code_key)
+
+                if unique_key not in found_keys:
+
+                    matches.append(
+                        f"📌 **รหัส / คำสำคัญ : {detected_code}**\n\n"
+                        f"{manual_db[code_key]}"
+                    )
+
+                    found_keys.add(unique_key)
+
+                break
+
+    # =====================================================
+    # ถ้าไม่พบจาก Error Code ให้ใช้การค้นหาแบบเดิม
+    # =====================================================
+
+    if not matches:
+
         exact_key = prompt.strip()
-        if exact_key in manual_db:
-            matches.append(
-                f"📌 **รหัส / คำสำคัญ : {exact_key}**\n\n{manual_db[exact_key]}"
-            )
-        else:
+
+        exact_variants = [
+            exact_key,
+            exact_key.upper(),
+            exact_key.lower(),
+        ]
+
+        exact_found = False
+
+        for key_variant in exact_variants:
+
+            if key_variant in manual_db:
+
+                matches.append(
+                    f"📌 **รหัส / คำสำคัญ : {key_variant}**\n\n"
+                    f"{manual_db[key_variant]}"
+                )
+
+                exact_found = True
+                break
+
+        if not exact_found:
+
             for key, value in manual_db.items():
-                key_text = str(key).lower()
+
+                key_text = str(key).strip().lower()
                 value_text = str(value).lower()
 
+                # ป้องกัน key ว่างหรือสั้นเกินไป
+                if not key_text or len(key_text) < 2:
+                    continue
+
                 if key_text in prompt_lower or prompt_lower in value_text:
-                    matches.append(
-                        f"📌 **รหัส / คำสำคัญ : {key}**\n\n{value}"
-                    )
+
+                    unique_key = str(key)
+
+                    if unique_key not in found_keys:
+
+                        matches.append(
+                            f"📌 **รหัส / คำสำคัญ : {key}**\n\n"
+                            f"{value}"
+                        )
+
+                        found_keys.add(unique_key)
 
                 if len(matches) >= 20:
                     break
-
-
-    # ===============================
-    # ถ้าพบข้อมูลจากคู่มือ
-    # ===============================
 
     if matches:
 
