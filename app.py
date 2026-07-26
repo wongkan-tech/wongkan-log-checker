@@ -1821,1241 +1821,6 @@ def show_ai_export_buttons(content):
 manual_db = {
         "10101": "ATMSNcontrol unit Parametererror Ignore None -> พารามิเตอร์ผิดพลาด (ระบบควบคุม ATM SN) ระบบให้ข้ามไปได้ ไม่ต้องดำเนินการใด ๆ",
         "10102": "ATMSNcontrol unit NolegalATMsequence number WriteasATMserialnumber None -> ไม่พบหมายเลขลำดับ ATM ที่ถูกต้อง ระบบจะบันทึกเป็นหมายเลขซีเรียลของตู้ ATM แทน",
-        
-    }
-# =========================================================================
-# --- [ส่วนที่ 3: ระบบประมวลผลดั้งเดิม ปรับปรุงฟังก์ชันตรวจจับโค้ดข้ามเวลาตัวเก่งล่าสุด] ---
-# =========================================================================
-
-def process_log_line(line):
-    line_upper = line.upper()
-    
-    # 1. ตรวจจับ PAPER FAULT เฉพาะกรณีที่มีคำนี้จริง
-    # ห้ามใช้เพียงคำว่า FAULT เพราะจะทำให้ Fault ของอุปกรณ์อื่นถูกระบุผิดเป็นกระดาษติด
-    if "PAPER FAULT" in line_upper:
-        time_match = re.search(r"\d{2}:\d{2}:\d{2}(?:\.\d+)?", line)
-        log_time = time_match.group(0) if time_match else "Unknown Time"
-        return {
-            "time": log_time,
-            "reason": "PAPER FAULT",
-            "line": line.strip(),
-            "solution": manual_db.get(
-                "PAPER FAULT",
-                "ตรวจสอบกระดาษ เครื่องพิมพ์ สาย USB/Communication และ Error Code ที่เกี่ยวข้อง"
-            )
-        }, None
-           
-    # 2. ตรวจจับเรื่อง RECOVERY FAIL ของเดิมของคุณเป๊ะๆ
-    if "RECOVERY FAIL" in line_upper:
-        return None, "recovery_fail"
-
-    # 3. ตรวจจับเรื่อง MAXIMUM RETRACT FAIL ของเดิมของคุณเป๊ะๆ
-    if "MAXIMUM RETRACT FAIL" in line_upper:
-        return None, "retract_fail"
-    
-    # คัดกรองข้อมูลธุรกรรมที่ไม่ใช่ Error แต่ไม่ตัด CARD/PRINTER แบบเหมารวม
-    # เพราะสองคำนี้อาจเป็นเหตุขัดข้องของอุปกรณ์จริง
-    noise_keywords = ["BILL", "*", "Terminal Id", "Card Number", "Amount Entry Field", "REF", "SEQUENCE NO", 
-    "RECEIPT", "OPCODE", "AMOUNT", "BILL COUNT", "PHONE NO", "FROM ACCOUNT", "WITHDRAWAL AMOUNT",
- "TRACK2", "TRACK 2", "PAN", "CARD EXPIRY", "APPROVAL CODE", "STAN", "RRN", "AUTH CODE", 
-"TRACE", "REFERENCE NUMBER", "TRANSACTION ID", "BALANCE", "CURRENCY", "SEQUENCE", "1000B", "1000A", "0500", "00100", "S0_I1", "S0_I0",]
-    has_error_signal = any(word in line_upper for word in ERROR_KEYWORDS)
-    if not has_error_signal and any(keyword in line_upper for keyword in noise_keywords):
-        return None, None
-        
-    is_matched = False
-    detected_reason = ""
-    solution_text = "No manual suggestion available for this specific keyword."
-
-    # 🎯 แก้ไขการดักจับเวลาในบรรทัดเพื่อพ่วงต่อ TIMESTAMP ป้องกันระบบค้าง
-    time_match = re.search(r'\d{2}:\d{2}:\d{2}(?:\.\d+)?', line)
-    log_time = time_match.group(0) if time_match else "Unknown Time"
-
-    # 🌟 [เพิ่มระบบดักจับตัวเลขข้ามเวลาตัวเก่งล่าสุด]: เช็กกลุ่มคำ Error/Failed ก่อนเป็นอันดับแรกสุดเพื่อล็อกความเสี่ยง
-    has_error_keyword = any(err_word in line_upper for err_word in ERROR_KEYWORDS)
-    
-    if has_error_keyword:
-        # สแกนหาชุดตัวเลขทั้งหมดในบรรทัด Log (ข้ามตัวเลขเวลา ย้อนไปคัดรหัสแท้)
-        numbers_found = CODE_PATTERN.findall(line)
-        for code_str in numbers_found:
-            # ข้ามตัวเลขบอกเวลาสั้นๆ ทั่วไป
-            if len(code_str) < 3 and not code_str.startswith('-'):
-                continue
-                
-            # ตรวจสอบเช็กคู่มือใน manual_db (แบบ String)
-            if code_str in manual_db:
-                is_matched = True
-                detected_reason = code_str
-                solution_text = manual_db[code_str]
-                break
-                
-            # ตรวจสอบเช็กคู่มือใน manual_db (แบบ Integer เผื่อไว้)
-            try:
-                if int(code_str) in manual_db:
-                    is_matched = True
-                    detected_reason = code_str
-                    solution_text = manual_db[int(code_str)]
-                    break
-            except ValueError:
-                pass
-
-    # 1. ของเดิมของคุณ: หากระบบกลุ่ม Error ด้านบนไม่ทำงานหรือหาโค้ดไม่เจอ ให้วิ่งเช็กตามระบบ Keywords หลักต่อ
-    if not is_matched:
-        for keyword in search_keywords:
-            clean_keyword = keyword.replace(r'\b', '').strip()
-            
-            # ถ้าเป็นคำสั้นพิเศษ บังคับตรวจสอบแบบคำโดดเดี่ยวๆ
-            if keyword in [r"\bNF\b", r"\bNT\b"]:
-                has_match = re.search(keyword, line_upper)
-            else:
-                has_match = clean_keyword in line_upper
-
-            if has_match:
-                is_matched = True
-                detected_reason = clean_keyword
-                # ดึงคำแปลจากคลังข้อมูล
-                if clean_keyword in manual_db:
-                    solution_text = manual_db[clean_keyword]
-                elif clean_keyword == "-14":
-                    solution_text = "Note jam flag is active."
-                elif "NETWORK" in clean_keyword:
-                    solution_text = "Network lost or disconnected."
-                break
-
-    # 2. ของเดิมของคุณ: ตรวจเช็กจากระบบ Regex ตัวเลขสล๊อตสำรองกรณีคำหลุด
-    if not is_matched:
-        all_digit_groups = re.findall(r'\b\d+\b', line_upper)
-        negative_codes = re.findall(r'-\d{3}\b', line_upper)
-        
-        for neg_code in negative_codes:
-            if neg_code in manual_db:
-                is_matched = True
-                detected_reason = neg_code
-                solution_text = manual_db[neg_code]
-                break
-            else:
-                is_matched = True
-                detected_reason = neg_code
-                solution_text = f"พบรหัสติดลบระบบ {neg_code}"
-                break
-
-        if not is_matched:
-            for num_group in all_digit_groups:
-                if len(num_group) == 4 or len(num_group) == 5:
-                    if num_group in manual_db:
-                        is_matched = True
-                        detected_reason = f"Error Code {num_group}"
-                        solution_text = manual_db[num_group]
-                        break
-
-    if is_matched:
-        return {
-            "time": log_time,
-            "line": line.strip(),
-            "reason": detected_reason,
-            "solution": solution_text
-        }, None
-        
-    return None, None
-
-def decode_uploaded_bytes(raw_bytes):
-    """ถอดรหัสไฟล์ Log โดยรองรับ UTF-8 และภาษาไทยจากระบบ Windows"""
-    for encoding in ("utf-8-sig", "utf-8", "cp874", "tis-620", "latin-1"):
-        try:
-            return raw_bytes.decode(encoding)
-        except UnicodeDecodeError:
-            continue
-    return raw_bytes.decode("utf-8", errors="replace")
-
-
-# --- ฟังก์ชันตัวช่วยวนลูปเนื้อหา Log เพื่อรวบรวมสถิติและผลลัพธ์ ของเดิมของคุณเป๊ะๆ ---
-def analyze_log_content(log_content, filename="File"):
-    found_count = 0
-    recovery_counter = 0
-    retract_fail_counter = 0
-    results_list = []
-    
-    for line in log_content.splitlines():
-        if "MAXIMUM RETRACT FAIL TIMES" in line:
-            retract_fail_counter += 1
-            
-        res, event_type = process_log_line(line)
-        
-        if event_type == "recovery_fail":
-            recovery_counter += 1
-        elif res:
-            found_count += 1
-            res["filename"] = filename
-            results_list.append(res)
-            
-    return results_list, recovery_counter, retract_fail_counter, found_count
-
-
-# ================================================================
-# ลบหน้าจอ Streamlit ชุดที่ซ้ำออกแล้ว เพื่อป้องกัน DuplicateElementKey
-# ระบบจะใช้หน้าจอชุดสมบูรณ์เพียงชุดเดียวที่อยู่หลัง manual_db
-# ================================================================
-CASH_FLOW_KNOWLEDGE_BASE = """
-NC - Note Cassette
-
-[Knowledge Base]
-
-Component = NC
-Full Name = Note Cassette (Cash Cassette)
-
-Description =
-ตลับบรรจุธนบัตรสำหรับเครื่อง ATM/CDM ใช้เก็บธนบัตรแต่ละชนิดก่อนเข้าสู่กระบวนการจ่ายเงิน
-
-Function =
-- จัดเก็บธนบัตร
-- จ่ายธนบัตรเข้าสู่ Note Feeder
-- รองรับการเติมเงินของเจ้าหน้าที่
-
-Related Unit =
-NF
-CF
-
-Common Problem =
-- Cassette Empty
-- Cash Low
-- Cassette Not Detected
-- Cassette Lock
-- Wrong Cassette
-
-Inspection =
-- ตรวจการติดตั้ง Cassette
-- ตรวจ Sensor
-- ตรวจชนิดธนบัตร
-- ตรวจความเสียหายของ Cassette
-
-CF - Cassette Frame
-
-[Knowledge Base]
-
-Component = CF
-Full Name = Cassette Frame
-
-Description =
-โครงสำหรับยึด Cassette ภายในเครื่อง ATM/CDM
-
-Function =
-- รองรับการติดตั้ง Cassette
-- จัดตำแหน่ง Cassette
-- เชื่อมต่อกับ Note Feeder
-
-Related Unit =
-NC
-NF
-
-Common Problem =
-- Frame Damage
-- Cassette Misalignment
-- Cassette Detection Error
-
-Inspection =
-- ตรวจตำแหน่ง Frame
-- ตรวจการล็อก Cassette
-- ตรวจการยึดน็อต
-
-RV - Reject Vault
-
-[Knowledge Base]
-
-Component = RV
-Full Name = Reject Vault
-
-Description =
-กล่องเก็บธนบัตรที่ถูก Reject หรือ Retract
-
-Function =
-- เก็บธนบัตรผิดปกติ
-- เก็บธนบัตรที่ลูกค้าไม่รับ
-- ป้องกันเงินสูญหาย
-
-Related Unit =
-NT
-NP
-
-Common Problem =
-- Reject Full
-- Retract Full
-- Reject Sensor Error
-
-Inspection =
-- ตรวจจำนวนเงิน
-- ตรวจ Sensor
-- ตรวจการอุดตัน
-
-NF - Note Feeder
-
-[Knowledge Base]
-
-Component = NF
-Full Name = Note Picking Module (Note Feeder)
-
-Description =
-ชุดหยิบธนบัตรจาก Cassette ทีละใบ
-
-Function =
-- หยิบธนบัตร
-- แยกธนบัตร
-- ส่งเข้าสู่ Note Transport
-
-Related Unit =
-NC
-NT
-
-Common Problem =
-- Pick Fail
-- Double Note
-- Feed Error
-- Empty Feed
-
-Inspection =
-- ตรวจ Roller
-- ตรวจ Separation Pad
-- ตรวจ Sensor
-- ทำความสะอาด
-
-NS - Note Stacker
-
-[Knowledge Base]
-
-Component = NS
-Full Name = Note Stacker
-
-Description =
-ชุดรวมธนบัตรก่อนส่งให้ลูกค้า
-
-Function =
-- รวมธนบัตร
-- ตรวจจำนวนธนบัตร
-- ส่งต่อไปยัง Presenter
-
-Related Unit =
-NT
-NP
-
-Common Problem =
-- Stack Error
-- Bundle Error
-- Note Misalignment
-
-Inspection =
-- ตรวจ Sensor
-- ตรวจ Roller
-- ตรวจการติดขัด
-
-NT - Note Transport
-
-[Knowledge Base]
-
-Component = NT
-Full Name = Note Transport
-
-Description =
-ระบบลำเลียงธนบัตรภายในเครื่อง
-
-Function =
-- ลำเลียงธนบัตร
-- ส่งธนบัตรระหว่างโมดูล
-- ควบคุมทิศทางการเดินธนบัตร
-
-Related Unit =
-NF
-NS
-NP
-RV
-
-Common Problem =
-- Transport Error
-- Note Jam
-- Belt Slip
-- Sensor Error
-
-Inspection =
-- ตรวจสายพาน
-- ตรวจ Roller
-- ตรวจ Sensor
-- ตรวจ Motor
-
-NP - Note Presenter
-
-[Knowledge Base]
-
-Component = NP
-Full Name = Note Presenter
-
-Description =
-ชุดนำธนบัตรออกให้ลูกค้า
-
-Function =
-- ส่งธนบัตรให้ลูกค้า
-- ตรวจว่าลูกค้ารับเงินหรือไม่
-- Retract เมื่อไม่รับเงิน
-
-Related Unit =
-NT
-RV
-
-Common Problem =
-- Presenter Error
-- Retract Fail
-- Shutter Error
-- Note Jam
-
-Inspection =
-- ตรวจ Shutter
-- ตรวจ Sensor
-- ตรวจ Roller
-
-SS - Safe Support
-
-[Knowledge Base]
-
-Component = SS
-Full Name = Safe Support
-
-Description =
-โครงยึดอุปกรณ์ภายในตู้นิรภัย (Safe)
-
-Function =
-- รองรับการติดตั้งโมดูล
-- เพิ่มความแข็งแรงของโครงสร้าง
-- ยึดอุปกรณ์ภายในเครื่อง
-
-Related Unit =
-All Hardware
-
-Common Problem =
-- Loose Bolt
-- Frame Damage
-
-Inspection =
-- ตรวจน็อต
-- ตรวจโครงสร้าง
-- ตรวจการยึดอุปกรณ์
-
-CIDS - Cassette ID Sensor
-
-[Knowledge Base]
-
-Component = CIDS
-Full Name = Cassette ID Sensor
-
-Description =
-เซ็นเซอร์ตรวจสอบหมายเลข Cassette และตรวจสอบว่ามี Cassette ติดตั้งอยู่หรือไม่
-
-Function =
-- ตรวจสอบ Cassette ID
-- ตรวจสอบการติดตั้ง Cassette
-- ระบุชนิดของ Cassette
-- ส่งข้อมูลไปยัง Main Control Board
-
-Related Unit =
-Cassette 1-6
-
-Common Problem =
-- Cassette Not Detected
-- Wrong Cassette ID
-- Cassette Missing
-- Hall Sensor Failure
-
-Inspection =
-- ตรวจตำแหน่ง Cassette
-- ตรวจแม่เหล็ก Cassette
-- ตรวจ Hall Sensor
-- ตรวจสายสัญญาณ
-
-CLLS - Cassette Low Level Sensor
-
-[Knowledge Base]
-
-Component = CLLS
-Full Name = Cassette Low Level Sensor
-
-Description =
-เซ็นเซอร์ตรวจสอบระดับเงินคงเหลือภายใน Cassette
-
-Function =
-- ตรวจสอบเงินใกล้หมด
-- แจ้งเตือน Low Cash
-- ส่งสถานะไปยังระบบ
-
-Related Unit =
-Cassette 1-6
-
-Common Problem =
-- Low Cash Warning
-- Sensor Failure
-- False Low Cash
-
-Inspection =
-- ตรวจจำนวนธนบัตร
-- ตรวจ Hall Sensor
-- ตรวจสายสัญญาณ
-
-FCS - Feeder Counter Sensor
-
-[Knowledge Base]
-
-Component = FCS
-Full Name = Feeder Counter Sensor
-
-Description =
-เซ็นเซอร์นับจำนวนธนบัตรที่ผ่านชุด Feeder และตรวจสอบการติดขัดของธนบัตร
-
-Function =
-- นับจำนวนธนบัตร
-- ตรวจจับ Note Jam
-- ตรวจการเคลื่อนที่ของธนบัตร
-
-CDS - Counter Dial Sensor
-
-[Knowledge Base]
-
-Component = CDS
-Full Name = Counter Dial Sensor
-
-Description =
-เซ็นเซอร์ตรวจจับการหมุนของมอเตอร์และคำนวณระยะการเคลื่อนที่ของธนบัตรจาก Timing Disk
-
-Function =
-- ตรวจสอบการหมุนมอเตอร์
-- ตรวจ Position
-- คำนวณระยะการเคลื่อนที่ของธนบัตร
-
-Related Unit =
-Feeder Motor
-
-Common Problem =
-- Encoder Error
-- Motor Position Error
-- Timing Disk Failure
-
-Inspection =
-- ตรวจ Timing Disk
-- ตรวจ Encoder
-- ตรวจมอเตอร์
-
-SLL - Skew & Length Sensor
-
-[Knowledge Base]
-
-Component = SLL
-Full Name = Skew & Length Sensor
-
-Description =
-เซ็นเซอร์ตรวจสอบความกว้าง ความเอียง ความยาว และระยะห่างของธนบัตร รวมถึงตรวจจับการติดขัด
-
-Function =
-- ตรวจความเอียงของธนบัตร
-- ตรวจความกว้าง
-- ตรวจความยาว
-- ตรวจระยะห่างระหว่างธนบัตร
-- ตรวจ Note Jam
-
-Related Unit =
-Note Transport
-
-Common Problem =
-- Skew Error
-- Note Jam
-- Width Error
-- Length Error
-
-Inspection =
-- ทำความสะอาด Sensor
-- ตรวจชุด Transport
-- ตรวจการจัดแนวธนบัตร
-
-MTS - Media Thickness Sensor
-
-[Knowledge Base]
-
-Component = MTS
-Full Name = Media Thickness Sensor
-
-Description =
-เซ็นเซอร์ตรวจสอบความหนาของธนบัตร และตรวจจับธนบัตรซ้อนหรือผิดปกติ
-
-Function =
-- ตรวจความหนาของธนบัตร
-- ตรวจ Double Note
-- ตรวจ Thin Note
-- ตรวจ Thick Note
-
-Related Unit =
-Note Transport
-
-Common Problem =
-- Double Note
-- Thickness Error
-- Sensor Failure
-
-Inspection =
-- ทำความสะอาด Sensor
-- ตรวจการปรับตั้ง Sensor
-- ตรวจเส้นทางเดินธนบัตร
-
-MEDS - Media Exit Diverter Sensor
-
-[Knowledge Base]
-
-Component = MEDS
-Full Name = Media Exit Diverter Sensor
-
-Description =
-เซ็นเซอร์นับธนบัตรที่ผ่าน Note Transport และสั่งการ Diverter
-
-Function =
-- นับธนบัตร
-- Trigger Diverter
-- ตรวจการผ่านของธนบัตร
-
-Related Unit =
-Diverter
-
-Common Problem =
-- Diverter Error
-- Note Count Error
-- Sensor Dirty
-
-Inspection =
-- ตรวจ Diverter
-- ตรวจ Infrared Sensor
-- ทำความสะอาด Sensor
-
-TES - Transport Exit Sensor
-
-[Knowledge Base]
-
-Component = TES
-Full Name = Transport Exit Sensor
-
-Description =
-เซ็นเซอร์ตรวจสอบธนบัตรก่อนเข้าสู่ Stacker และตรวจจับการติดขัด
-
-Function =
-- ตรวจนับธนบัตร
-- ตรวจ Note Jam
-- ตรวจการเข้าสู่ Stacker
-
-Related Unit =
-Stacker
-
-Common Problem =
-- Note Jam
-- Transport Error
-- Exit Sensor Failure
-
-Inspection =
-- ทำความสะอาด Sensor
-- ตรวจเส้นทางเดินธนบัตร
-- ตรวจชุด Stacker
-
-[Knowledge Base]
-
-Component = FM
-
-Full Name = Feeding Motor
-
-Description =
-มอเตอร์สำหรับชุด Note Feeder ทำหน้าที่ฟีดและแยกธนบัตรออกจาก Note Cassette รวมถึงขับชุดลำเลียงภายใน Note Feeder
-
-Function =
-- ฟีดธนบัตรออกจาก Note Cassette
-- แยกธนบัตรทีละใบ
-- ขับชุดลำเลียงภายใน Note Feeder
-- ส่งธนบัตรเข้าสู่ Note Transport
-
-Related Unit =
-NC
-NF
-NT
-
-Common Problem =
-- Feed Error
-- Double Feed
-- Miss Feed
-- Feed Motor Error
-- Note Jam
-
-Inspection =
-- ตรวจการหมุนของ Feeding Motor
-- ตรวจ Roller และ Separator
-- ตรวจสายพาน
-- ตรวจ Sensor ภายใน NF
-- ตรวจสายไฟและ Connector
-
-[Knowledge Base]
-
-Component = SM
-
-Full Name = Stacking Motor
-
-Description =
-มอเตอร์ควบคุมการทำงานของ Note Stacker ทำหน้าที่เปลี่ยนชุดรับธนบัตรจากตำแหน่งรับเงินเป็นตำแหน่งจัดเรียงธนบัตรก่อนส่งออก
-
-Function =
-- ควบคุมการทำงานของ Note Stacker
-- จัดเรียงธนบัตรก่อนส่งให้ลูกค้า
-- เตรียมชุดธนบัตรสำหรับการ Present
-
-Related Unit =
-NS
-NP
-
-Common Problem =
-- Stack Error
-- Stack Jam
-- Stacking Motor Error
-- Bundle Error
-
-Inspection =
-- ตรวจการหมุนของ Motor
-- ตรวจชุด Stacker
-- ตรวจ Gear
-- ตรวจ Roller
-- ตรวจ Sensor ของ Stacker
-
-[Knowledge Base]
-
-Component = TMM
-
-Full Name = Transport Main Motor
-
-Description =
-มอเตอร์หลักสำหรับระบบลำเลียงธนบัตร ทำหน้าที่ขับเคลื่อนเส้นทางการเดินธนบัตรทั้งหมดตั้งแต่ Note Feeder จนถึง Note Presenter
-
-Function =
-- ขับ Note Transport
-- ขับ Presenter Transport
-- ขับ Stacker Transport
-- ขับลำเลียงธนบัตรตลอดเส้นทาง
-
-Related Unit =
-NF
-NT
-NS
-NP
-
-Common Problem =
-- Transport Error
-- Transport Motor Error
-- Note Jam
-- Transport Timeout
-
-Inspection =
-- ตรวจการหมุนของ Motor
-- ตรวจสายพาน
-- ตรวจ Gear
-- ตรวจ Roller
-- ตรวจ Sensor ตลอดเส้นทางเดินธนบัตร
-
-[Knowledge Base]
-
-Component = BRDS
-
-Full Name = Bundle Reject Diverter Solenoid
-
-Description =
-โซลินอยด์ควบคุมการเปลี่ยนเส้นทางของธนบัตรจาก Main Transport ไปยังเส้นทาง Reject
-
-Function =
-- เปลี่ยนเส้นทางธนบัตรไป Reject
-- ควบคุม Diverter
-- ป้องกันการส่งธนบัตรผิดเส้นทาง
-
-Related Unit =
-NT
-RV
-
-Common Problem =
-- Reject Error
-- Diverter Error
-- Solenoid Failure
-- Note Jam
-
-Inspection =
-- ตรวจการทำงานของ Solenoid
-- ตรวจ Diverter
-- ตรวจสปริง
-- ตรวจ Sensor
-- ตรวจ Connector
-
-[Knowledge Base]
-
-Component = TDS
-
-Full Name = Transport Diverter Solenoid
-
-Description =
-โซลินอยด์ควบคุมการเปลี่ยนเส้นทางธนบัตรจาก Main Transport ไปยังชุด Forgotten Note Retract เมื่อผู้ใช้ไม่รับเงินภายในเวลาที่กำหนด
-
-Function =
-- เปลี่ยนเส้นทางธนบัตรเข้าสู่ Retract
-- ควบคุม Forgotten Note Retract
-- ป้องกันธนบัตรค้างที่ช่องรับเงิน
-
-Related Unit =
-NT
-RV
-NP
-
-Common Problem =
-- Retract Error
-- Diverter Error
-- Solenoid Error
-- Note Jam
-
-Inspection =
-- ตรวจ Solenoid
-- ตรวจ Diverter
-- ตรวจการเคลื่อนที่ของชุด Retract
-- ตรวจ Sensor
-- ตรวจสายไฟและ Connector
-
-Cash Flow Knowledge Base
-[Knowledge Base]
-
-Title = Cash Out Process (Normal Dispense)
-
-Description =
-ลำดับการทำงานของเครื่อง CDM8240N ตั้งแต่ดึงธนบัตรออกจาก Note Cassette จนส่งมอบให้ลูกค้า โดยระบบจะตรวจสอบคุณภาพธนบัตร ความเอียง ความหนา จำนวน และตำแหน่งของธนบัตรในทุกขั้นตอน หากพบความผิดปกติ ระบบจะเปลี่ยนเส้นทางไปยัง Reject หรือ Retract โดยอัตโนมัติ
-
-Process =
-
-Step 1 : Note Feeding
-
-- Feeding Motor (FM) ทำงาน
-- ดึงธนบัตรออกจาก Note Cassette (NC)
-- FCS ตรวจจับการฟีดธนบัตร
-- CDS ตรวจจับการเคลื่อนที่และระยะการลำเลียงของธนบัตร
-
---------------------------------------------------
-
-Step 2 : Note Validation
-
-ธนบัตรถูกส่งเข้าสู่ Note Transport (NT)
-
-ระหว่างทางจะผ่าน Sensor ดังนี้
-
-• SLL / SLRS
-  - ตรวจสอบความเอียงของธนบัตร (Skew Detection)
-
-• MTS
-  - ตรวจสอบความหนา (Thickness)
-  - ตรวจจับธนบัตรซ้อน (Double Note)
-  - ตรวจสอบความกว้างของธนบัตร
-
-หากค่าที่ตรวจสอบอยู่ในเกณฑ์
-→ ถือว่าเป็น Qualified Note
-
-หากไม่ผ่าน
-→ ระบบส่งไป Reject
-
---------------------------------------------------
-
-Step 3 : Bundle Transport
-
-ธนบัตรที่ผ่านการตรวจสอบ
-
-↓
-
-เข้าสู่ Main Transport
-
-↓
-
-BRDS (Bundle Reject Diverter Solenoid)
-
-กำหนดเส้นทาง
-
-- ไป Note Stacker
-หรือ
-- ไป Reject
-
---------------------------------------------------
-
-Step 4 : Note Stacking
-
-ธนบัตรถูกส่งเข้า
-
-Note Stacker (NS)
-
-โดยมี
-
-TES
-ตรวจสอบการเข้าของธนบัตร
-
-SCS
-ตรวจสอบจำนวนธนบัตรภายใน Stacker
-
-SM (Stacking Motor)
-
-จัดเรียงธนบัตรให้เป็นชุดเดียว (Bundle)
-
---------------------------------------------------
-
-Step 5 : Bundle Presentation
-
-เมื่อครบจำนวนที่ลูกค้าถอน
-
-↓
-
-SM ผลัก Bundle
-
-↓
-
-เข้าสู่ Presenter Transport
-
-↓
-
-PCS (Presenter Check Sensor)
-
-ตรวจสอบว่าชุดธนบัตรเข้าสู่ Presenter แล้ว
-
-↓
-
-Shutter เปิด
-
-↓
-
-PES (Presenter Exit Sensor)
-
-ตรวจสอบว่าธนบัตรถูกส่งถึงช่องรับเงิน
-
---------------------------------------------------
-
-Step 6 : Customer Pickup
-
-ลูกค้ารับธนบัตร
-
-ระบบตรวจสอบ
-
-Presenter Sensor
-
-หากลูกค้ารับเงิน
-
-Transaction Complete
-
---------------------------------------------------
-
-Step 7 : Retract (หากลูกค้าไม่รับเงิน)
-
-เมื่อหมดเวลาที่กำหนด
-
-↓
-
-TDS (Transport Diverter Solenoid)
-
-เปลี่ยนเส้นทาง
-
-↓
-
-ธนบัตรเข้าสู่
-
-Retract Vault (RV)
-
-↓
-
-Transaction Finish
-
-=========================================
-Cash Flow Knowledge Base
-=========================================
-
-Title = Bundle Reject Process
-
-Description =
-Bundle Reject คือกระบวนการที่เครื่องปฏิเสธธนบัตรทั้งชุด (Bundle) และส่งกลับเข้าสู่ Reject Vault เมื่อพบความผิดปกติที่ไม่สามารถจ่ายเงินให้ลูกค้าได้อย่างปลอดภัย เช่น จำนวนธนบัตรไม่ถูกต้อง ธนบัตรติดขัด หรือเกิดความผิดปกติระหว่างการลำเลียงหลังจากจัดชุดธนบัตรแล้ว
-
-----------------------------------------
-
-Process =
-
-Step 1 : Note Feeding
-
-- Feeding Motor (FM) ฟีดธนบัตรจาก Note Cassette
-- FCS ตรวจจับการฟีดธนบัตร
-- CDS ตรวจจับการเคลื่อนที่ของธนบัตร
-
-----------------------------------------
-
-Step 2 : Note Validation
-
-ธนบัตรเข้าสู่ Note Transport
-
-ผ่านการตรวจสอบโดย
-
-- SLL
-- MTS
-- Sensor ภายใน Note Transport
-
-ธนบัตรทุกใบผ่านการตรวจสอบ
-
-↓
-
-เข้าสู่ Note Stacker
-
-----------------------------------------
-
-Step 3 : Bundle Stacking
-
-SM (Stacking Motor)
-
-จัดเรียงธนบัตรทั้งหมดเป็น Bundle
-
-TES
-
-ตรวจสอบการเข้าสู่ Stacker
-
-SCS
-
-ตรวจสอบการจัดเก็บธนบัตร
-
-----------------------------------------
-
-Step 4 : Bundle Transport
-
-ชุดธนบัตรถูกส่งออกจาก Note Stacker
-
-↓
-
-เข้าสู่ Main Transport
-
-----------------------------------------
-
-Step 5 : Bundle Reject
-
-ระบบตรวจพบความผิดปกติ
-
-↓
-
-BRDS (Bundle Reject Diverter Solenoid)
-
-ทำงาน
-
-↓
-
-เปลี่ยนเส้นทางธนบัตร
-
-↓
-
-Reject Transport
-
-↓
-
-Reject Vault (RV)
-
-----------------------------------------
-
-System Result =
-
-ธนบัตรทั้งชุด
-
-↓
-
-Reject Vault
-
-↓
-
-ไม่ส่งถึง Presenter
-
-↓
-
-ลูกค้าไม่ได้รับเงิน
-
-↓
-
-Transaction Cancel หรือ Retry ตามเงื่อนไขของระบบ
-
-----------------------------------------
-
-Possible Reject Cause =
-
-- Bundle Jam
-- Transport Jam
-- Bundle Count Error
-- Presenter Error
-- Shutter Error
-- Transport Timeout
-- Bundle Too Thick
-- Bundle Position Error
-- BRDS Failure
-- Sensor Detection Error
-
-----------------------------------------
-
-Inspection =
-
-- ตรวจ BRDS Solenoid
-- ตรวจ TDS Solenoid
-- ตรวจ Main Transport
-- ตรวจ Roller
-- ตรวจสายพาน
-- ตรวจ TES
-- ตรวจ PCS
-- ตรวจ Presenter
-- ตรวจ Reject Transport
-- ตรวจ Reject Vault
-- ตรวจ Sensor ทุกตำแหน่งในเส้นทาง Bundle
-
-----------------------------------------
-
-Related Unit =
-
-FM
-NF
-NT
-NS
-SM
-TES
-BRDS
-PCS
-PES
-RV
-
-=========================================
-Cash Flow Knowledge Base
-=========================================
-
-Title = Retract Process
-
-Description =
-Retract คือกระบวนการดึงธนบัตรกลับอัตโนมัติ เมื่อเครื่องได้ส่งธนบัตรออกไปยังช่องรับเงิน (Presenter) แล้ว แต่ลูกค้าไม่รับเงินภายในเวลาที่กำหนด หรือปล่อยให้หมดเวลา ระบบจะดึงธนบัตรกลับและส่งเข้าสู่ Reject Vault (Retract Vault) เพื่อป้องกันการสูญหายของเงิน
-
-----------------------------------------
-
-Trigger Condition =
-
-- ลูกค้าไม่รับเงินภายในเวลาที่กำหนด
-- Customer Timeout
-- Forgotten Cash
-- Presenter Timeout
-
-----------------------------------------
-
-Process =
-
-Step 1 : Cash Presentation
-
-- ธนบัตรถูกส่งจาก Note Stacker
-- ผ่าน Presenter Transport
-- PCS ตรวจสอบว่าธนบัตรเข้าสู่ Presenter
-- PES ตรวจสอบว่าธนบัตรอยู่ที่ช่องรับเงิน
-- Shutter เปิดเพื่อให้ลูกค้ารับเงิน
-
-↓
-
-Step 2 : Customer Waiting
-
-เครื่องเริ่มนับเวลารอ
-
-หากลูกค้ารับเงิน
-
-↓
-
-Transaction Complete
-
-หากหมดเวลารอ
-
-↓
-
-เข้าสู่ Retract Process
-
-----------------------------------------
-
-Step 3 : Retract
-
-TDS (Transport Diverter Solenoid)
-
-ทำงาน
-
-↓
-
-เปลี่ยนเส้นทางการลำเลียง
-
-↓
-
-Transport Main Motor
-
-หมุนย้อนกลับ
-
-↓
-
-ดึงธนบัตรกลับจาก Presenter
-
-↓
-
-Reject Transport
-
-↓
-
-Reject Vault (RV)
-
-----------------------------------------
-
-System Result =
-
-ธนบัตรทั้งหมด
-
-↓
-
-Reject Vault
-
-↓
-
-Transaction Complete
-
-↓
-
-บันทึกเหตุการณ์ Retract
-
-----------------------------------------
-
-Possible Cause =
-
-- Customer Timeout
-- Customer Forgot Cash
-- Presenter Timeout
-- Customer Walk Away
-- Cash Not Collected
-
-----------------------------------------
-
-Inspection =
-
-- ตรวจ TDS Solenoid
-- ตรวจ Presenter
-- ตรวจ Shutter
-- ตรวจ PCS
-- ตรวจ PES
-- ตรวจ Roller
-- ตรวจ Transport Belt
-- ตรวจ Main Transport
-- ตรวจ Reject Transport
-- ตรวจ Reject Vault
-- ตรวจ Sensor ทุกตำแหน่งในเส้นทาง Retract
-
-----------------------------------------
-
-Related Unit =
-
-NP
-PCS
-PES
-TDS
-TMM
-NT
-RV
-"""
-
-
-
-manual_db = {
-        "10101": "ATMSNcontrol unit Parametererror Ignore None -> พารามิเตอร์ผิดพลาด (ระบบควบคุม ATM SN) ระบบให้ข้ามไปได้ ไม่ต้องดำเนินการใด ๆ",
-        "10102": "ATMSNcontrol unit NolegalATMsequence number WriteasATMserialnumber None -> ไม่พบหมายเลขลำดับ ATM ที่ถูกต้อง ระบบจะบันทึกเป็นหมายเลขซีเรียลของตู้ ATM แทน",
         "10103": "ATMSNcontrol unit Failtooperatetheregistry Checktheoperationauthority None -> ไม่สามารถแก้ไขค่าใน Registry ได้ ให้ตรวจสอบสิทธิ์การเข้าถึงระบบ (Authority)",
         "10104": "ATMSNcontrol unit DLL executionerror Checkthestatusofrelative module None -> การรันไฟล์ DLL ผิดพลาด ให้ตรวจสอบสถานะของโมดูลที่เกี่ยวข้อง",
         "10105": "ATMSNcontrol unit Applicationprogramrunning error Re-sendthecommandorupdate software None -> โปรแกรมแอปพลิเคชันทำงานผิดพลาด ให้ลองส่งคำสั่งใหม่อีกครั้ง หรือทำการอัปเดตซอฟต์แวร์",
@@ -6664,6 +5429,1242 @@ def analyze_log_content(log_content, filename="File"):
             
     return results_list, recovery_counter, retract_fail_counter, found_count
 
+
+# ================================================================
+# ลบหน้าจอ Streamlit ชุดที่ซ้ำออกแล้ว เพื่อป้องกัน DuplicateElementKey
+# ระบบจะใช้หน้าจอชุดสมบูรณ์เพียงชุดเดียวที่อยู่หลัง manual_db
+# ================================================================
+CASH_FLOW_KNOWLEDGE_BASE = """
+NC - Note Cassette
+
+[Knowledge Base]
+
+Component = NC
+Full Name = Note Cassette (Cash Cassette)
+
+Description =
+ตลับบรรจุธนบัตรสำหรับเครื่อง ATM/CDM ใช้เก็บธนบัตรแต่ละชนิดก่อนเข้าสู่กระบวนการจ่ายเงิน
+
+Function =
+- จัดเก็บธนบัตร
+- จ่ายธนบัตรเข้าสู่ Note Feeder
+- รองรับการเติมเงินของเจ้าหน้าที่
+
+Related Unit =
+NF
+CF
+
+Common Problem =
+- Cassette Empty
+- Cash Low
+- Cassette Not Detected
+- Cassette Lock
+- Wrong Cassette
+
+Inspection =
+- ตรวจการติดตั้ง Cassette
+- ตรวจ Sensor
+- ตรวจชนิดธนบัตร
+- ตรวจความเสียหายของ Cassette
+
+CF - Cassette Frame
+
+[Knowledge Base]
+
+Component = CF
+Full Name = Cassette Frame
+
+Description =
+โครงสำหรับยึด Cassette ภายในเครื่อง ATM/CDM
+
+Function =
+- รองรับการติดตั้ง Cassette
+- จัดตำแหน่ง Cassette
+- เชื่อมต่อกับ Note Feeder
+
+Related Unit =
+NC
+NF
+
+Common Problem =
+- Frame Damage
+- Cassette Misalignment
+- Cassette Detection Error
+
+Inspection =
+- ตรวจตำแหน่ง Frame
+- ตรวจการล็อก Cassette
+- ตรวจการยึดน็อต
+
+RV - Reject Vault
+
+[Knowledge Base]
+
+Component = RV
+Full Name = Reject Vault
+
+Description =
+กล่องเก็บธนบัตรที่ถูก Reject หรือ Retract
+
+Function =
+- เก็บธนบัตรผิดปกติ
+- เก็บธนบัตรที่ลูกค้าไม่รับ
+- ป้องกันเงินสูญหาย
+
+Related Unit =
+NT
+NP
+
+Common Problem =
+- Reject Full
+- Retract Full
+- Reject Sensor Error
+
+Inspection =
+- ตรวจจำนวนเงิน
+- ตรวจ Sensor
+- ตรวจการอุดตัน
+
+NF - Note Feeder
+
+[Knowledge Base]
+
+Component = NF
+Full Name = Note Picking Module (Note Feeder)
+
+Description =
+ชุดหยิบธนบัตรจาก Cassette ทีละใบ
+
+Function =
+- หยิบธนบัตร
+- แยกธนบัตร
+- ส่งเข้าสู่ Note Transport
+
+Related Unit =
+NC
+NT
+
+Common Problem =
+- Pick Fail
+- Double Note
+- Feed Error
+- Empty Feed
+
+Inspection =
+- ตรวจ Roller
+- ตรวจ Separation Pad
+- ตรวจ Sensor
+- ทำความสะอาด
+
+NS - Note Stacker
+
+[Knowledge Base]
+
+Component = NS
+Full Name = Note Stacker
+
+Description =
+ชุดรวมธนบัตรก่อนส่งให้ลูกค้า
+
+Function =
+- รวมธนบัตร
+- ตรวจจำนวนธนบัตร
+- ส่งต่อไปยัง Presenter
+
+Related Unit =
+NT
+NP
+
+Common Problem =
+- Stack Error
+- Bundle Error
+- Note Misalignment
+
+Inspection =
+- ตรวจ Sensor
+- ตรวจ Roller
+- ตรวจการติดขัด
+
+NT - Note Transport
+
+[Knowledge Base]
+
+Component = NT
+Full Name = Note Transport
+
+Description =
+ระบบลำเลียงธนบัตรภายในเครื่อง
+
+Function =
+- ลำเลียงธนบัตร
+- ส่งธนบัตรระหว่างโมดูล
+- ควบคุมทิศทางการเดินธนบัตร
+
+Related Unit =
+NF
+NS
+NP
+RV
+
+Common Problem =
+- Transport Error
+- Note Jam
+- Belt Slip
+- Sensor Error
+
+Inspection =
+- ตรวจสายพาน
+- ตรวจ Roller
+- ตรวจ Sensor
+- ตรวจ Motor
+
+NP - Note Presenter
+
+[Knowledge Base]
+
+Component = NP
+Full Name = Note Presenter
+
+Description =
+ชุดนำธนบัตรออกให้ลูกค้า
+
+Function =
+- ส่งธนบัตรให้ลูกค้า
+- ตรวจว่าลูกค้ารับเงินหรือไม่
+- Retract เมื่อไม่รับเงิน
+
+Related Unit =
+NT
+RV
+
+Common Problem =
+- Presenter Error
+- Retract Fail
+- Shutter Error
+- Note Jam
+
+Inspection =
+- ตรวจ Shutter
+- ตรวจ Sensor
+- ตรวจ Roller
+
+SS - Safe Support
+
+[Knowledge Base]
+
+Component = SS
+Full Name = Safe Support
+
+Description =
+โครงยึดอุปกรณ์ภายในตู้นิรภัย (Safe)
+
+Function =
+- รองรับการติดตั้งโมดูล
+- เพิ่มความแข็งแรงของโครงสร้าง
+- ยึดอุปกรณ์ภายในเครื่อง
+
+Related Unit =
+All Hardware
+
+Common Problem =
+- Loose Bolt
+- Frame Damage
+
+Inspection =
+- ตรวจน็อต
+- ตรวจโครงสร้าง
+- ตรวจการยึดอุปกรณ์
+
+CIDS - Cassette ID Sensor
+
+[Knowledge Base]
+
+Component = CIDS
+Full Name = Cassette ID Sensor
+
+Description =
+เซ็นเซอร์ตรวจสอบหมายเลข Cassette และตรวจสอบว่ามี Cassette ติดตั้งอยู่หรือไม่
+
+Function =
+- ตรวจสอบ Cassette ID
+- ตรวจสอบการติดตั้ง Cassette
+- ระบุชนิดของ Cassette
+- ส่งข้อมูลไปยัง Main Control Board
+
+Related Unit =
+Cassette 1-6
+
+Common Problem =
+- Cassette Not Detected
+- Wrong Cassette ID
+- Cassette Missing
+- Hall Sensor Failure
+
+Inspection =
+- ตรวจตำแหน่ง Cassette
+- ตรวจแม่เหล็ก Cassette
+- ตรวจ Hall Sensor
+- ตรวจสายสัญญาณ
+
+CLLS - Cassette Low Level Sensor
+
+[Knowledge Base]
+
+Component = CLLS
+Full Name = Cassette Low Level Sensor
+
+Description =
+เซ็นเซอร์ตรวจสอบระดับเงินคงเหลือภายใน Cassette
+
+Function =
+- ตรวจสอบเงินใกล้หมด
+- แจ้งเตือน Low Cash
+- ส่งสถานะไปยังระบบ
+
+Related Unit =
+Cassette 1-6
+
+Common Problem =
+- Low Cash Warning
+- Sensor Failure
+- False Low Cash
+
+Inspection =
+- ตรวจจำนวนธนบัตร
+- ตรวจ Hall Sensor
+- ตรวจสายสัญญาณ
+
+FCS - Feeder Counter Sensor
+
+[Knowledge Base]
+
+Component = FCS
+Full Name = Feeder Counter Sensor
+
+Description =
+เซ็นเซอร์นับจำนวนธนบัตรที่ผ่านชุด Feeder และตรวจสอบการติดขัดของธนบัตร
+
+Function =
+- นับจำนวนธนบัตร
+- ตรวจจับ Note Jam
+- ตรวจการเคลื่อนที่ของธนบัตร
+
+CDS - Counter Dial Sensor
+
+[Knowledge Base]
+
+Component = CDS
+Full Name = Counter Dial Sensor
+
+Description =
+เซ็นเซอร์ตรวจจับการหมุนของมอเตอร์และคำนวณระยะการเคลื่อนที่ของธนบัตรจาก Timing Disk
+
+Function =
+- ตรวจสอบการหมุนมอเตอร์
+- ตรวจ Position
+- คำนวณระยะการเคลื่อนที่ของธนบัตร
+
+Related Unit =
+Feeder Motor
+
+Common Problem =
+- Encoder Error
+- Motor Position Error
+- Timing Disk Failure
+
+Inspection =
+- ตรวจ Timing Disk
+- ตรวจ Encoder
+- ตรวจมอเตอร์
+
+SLL - Skew & Length Sensor
+
+[Knowledge Base]
+
+Component = SLL
+Full Name = Skew & Length Sensor
+
+Description =
+เซ็นเซอร์ตรวจสอบความกว้าง ความเอียง ความยาว และระยะห่างของธนบัตร รวมถึงตรวจจับการติดขัด
+
+Function =
+- ตรวจความเอียงของธนบัตร
+- ตรวจความกว้าง
+- ตรวจความยาว
+- ตรวจระยะห่างระหว่างธนบัตร
+- ตรวจ Note Jam
+
+Related Unit =
+Note Transport
+
+Common Problem =
+- Skew Error
+- Note Jam
+- Width Error
+- Length Error
+
+Inspection =
+- ทำความสะอาด Sensor
+- ตรวจชุด Transport
+- ตรวจการจัดแนวธนบัตร
+
+MTS - Media Thickness Sensor
+
+[Knowledge Base]
+
+Component = MTS
+Full Name = Media Thickness Sensor
+
+Description =
+เซ็นเซอร์ตรวจสอบความหนาของธนบัตร และตรวจจับธนบัตรซ้อนหรือผิดปกติ
+
+Function =
+- ตรวจความหนาของธนบัตร
+- ตรวจ Double Note
+- ตรวจ Thin Note
+- ตรวจ Thick Note
+
+Related Unit =
+Note Transport
+
+Common Problem =
+- Double Note
+- Thickness Error
+- Sensor Failure
+
+Inspection =
+- ทำความสะอาด Sensor
+- ตรวจการปรับตั้ง Sensor
+- ตรวจเส้นทางเดินธนบัตร
+
+MEDS - Media Exit Diverter Sensor
+
+[Knowledge Base]
+
+Component = MEDS
+Full Name = Media Exit Diverter Sensor
+
+Description =
+เซ็นเซอร์นับธนบัตรที่ผ่าน Note Transport และสั่งการ Diverter
+
+Function =
+- นับธนบัตร
+- Trigger Diverter
+- ตรวจการผ่านของธนบัตร
+
+Related Unit =
+Diverter
+
+Common Problem =
+- Diverter Error
+- Note Count Error
+- Sensor Dirty
+
+Inspection =
+- ตรวจ Diverter
+- ตรวจ Infrared Sensor
+- ทำความสะอาด Sensor
+
+TES - Transport Exit Sensor
+
+[Knowledge Base]
+
+Component = TES
+Full Name = Transport Exit Sensor
+
+Description =
+เซ็นเซอร์ตรวจสอบธนบัตรก่อนเข้าสู่ Stacker และตรวจจับการติดขัด
+
+Function =
+- ตรวจนับธนบัตร
+- ตรวจ Note Jam
+- ตรวจการเข้าสู่ Stacker
+
+Related Unit =
+Stacker
+
+Common Problem =
+- Note Jam
+- Transport Error
+- Exit Sensor Failure
+
+Inspection =
+- ทำความสะอาด Sensor
+- ตรวจเส้นทางเดินธนบัตร
+- ตรวจชุด Stacker
+
+[Knowledge Base]
+
+Component = FM
+
+Full Name = Feeding Motor
+
+Description =
+มอเตอร์สำหรับชุด Note Feeder ทำหน้าที่ฟีดและแยกธนบัตรออกจาก Note Cassette รวมถึงขับชุดลำเลียงภายใน Note Feeder
+
+Function =
+- ฟีดธนบัตรออกจาก Note Cassette
+- แยกธนบัตรทีละใบ
+- ขับชุดลำเลียงภายใน Note Feeder
+- ส่งธนบัตรเข้าสู่ Note Transport
+
+Related Unit =
+NC
+NF
+NT
+
+Common Problem =
+- Feed Error
+- Double Feed
+- Miss Feed
+- Feed Motor Error
+- Note Jam
+
+Inspection =
+- ตรวจการหมุนของ Feeding Motor
+- ตรวจ Roller และ Separator
+- ตรวจสายพาน
+- ตรวจ Sensor ภายใน NF
+- ตรวจสายไฟและ Connector
+
+[Knowledge Base]
+
+Component = SM
+
+Full Name = Stacking Motor
+
+Description =
+มอเตอร์ควบคุมการทำงานของ Note Stacker ทำหน้าที่เปลี่ยนชุดรับธนบัตรจากตำแหน่งรับเงินเป็นตำแหน่งจัดเรียงธนบัตรก่อนส่งออก
+
+Function =
+- ควบคุมการทำงานของ Note Stacker
+- จัดเรียงธนบัตรก่อนส่งให้ลูกค้า
+- เตรียมชุดธนบัตรสำหรับการ Present
+
+Related Unit =
+NS
+NP
+
+Common Problem =
+- Stack Error
+- Stack Jam
+- Stacking Motor Error
+- Bundle Error
+
+Inspection =
+- ตรวจการหมุนของ Motor
+- ตรวจชุด Stacker
+- ตรวจ Gear
+- ตรวจ Roller
+- ตรวจ Sensor ของ Stacker
+
+[Knowledge Base]
+
+Component = TMM
+
+Full Name = Transport Main Motor
+
+Description =
+มอเตอร์หลักสำหรับระบบลำเลียงธนบัตร ทำหน้าที่ขับเคลื่อนเส้นทางการเดินธนบัตรทั้งหมดตั้งแต่ Note Feeder จนถึง Note Presenter
+
+Function =
+- ขับ Note Transport
+- ขับ Presenter Transport
+- ขับ Stacker Transport
+- ขับลำเลียงธนบัตรตลอดเส้นทาง
+
+Related Unit =
+NF
+NT
+NS
+NP
+
+Common Problem =
+- Transport Error
+- Transport Motor Error
+- Note Jam
+- Transport Timeout
+
+Inspection =
+- ตรวจการหมุนของ Motor
+- ตรวจสายพาน
+- ตรวจ Gear
+- ตรวจ Roller
+- ตรวจ Sensor ตลอดเส้นทางเดินธนบัตร
+
+[Knowledge Base]
+
+Component = BRDS
+
+Full Name = Bundle Reject Diverter Solenoid
+
+Description =
+โซลินอยด์ควบคุมการเปลี่ยนเส้นทางของธนบัตรจาก Main Transport ไปยังเส้นทาง Reject
+
+Function =
+- เปลี่ยนเส้นทางธนบัตรไป Reject
+- ควบคุม Diverter
+- ป้องกันการส่งธนบัตรผิดเส้นทาง
+
+Related Unit =
+NT
+RV
+
+Common Problem =
+- Reject Error
+- Diverter Error
+- Solenoid Failure
+- Note Jam
+
+Inspection =
+- ตรวจการทำงานของ Solenoid
+- ตรวจ Diverter
+- ตรวจสปริง
+- ตรวจ Sensor
+- ตรวจ Connector
+
+[Knowledge Base]
+
+Component = TDS
+
+Full Name = Transport Diverter Solenoid
+
+Description =
+โซลินอยด์ควบคุมการเปลี่ยนเส้นทางธนบัตรจาก Main Transport ไปยังชุด Forgotten Note Retract เมื่อผู้ใช้ไม่รับเงินภายในเวลาที่กำหนด
+
+Function =
+- เปลี่ยนเส้นทางธนบัตรเข้าสู่ Retract
+- ควบคุม Forgotten Note Retract
+- ป้องกันธนบัตรค้างที่ช่องรับเงิน
+
+Related Unit =
+NT
+RV
+NP
+
+Common Problem =
+- Retract Error
+- Diverter Error
+- Solenoid Error
+- Note Jam
+
+Inspection =
+- ตรวจ Solenoid
+- ตรวจ Diverter
+- ตรวจการเคลื่อนที่ของชุด Retract
+- ตรวจ Sensor
+- ตรวจสายไฟและ Connector
+
+Cash Flow Knowledge Base
+[Knowledge Base]
+
+Title = Cash Out Process (Normal Dispense)
+
+Description =
+ลำดับการทำงานของเครื่อง CDM8240N ตั้งแต่ดึงธนบัตรออกจาก Note Cassette จนส่งมอบให้ลูกค้า โดยระบบจะตรวจสอบคุณภาพธนบัตร ความเอียง ความหนา จำนวน และตำแหน่งของธนบัตรในทุกขั้นตอน หากพบความผิดปกติ ระบบจะเปลี่ยนเส้นทางไปยัง Reject หรือ Retract โดยอัตโนมัติ
+
+Process =
+
+Step 1 : Note Feeding
+
+- Feeding Motor (FM) ทำงาน
+- ดึงธนบัตรออกจาก Note Cassette (NC)
+- FCS ตรวจจับการฟีดธนบัตร
+- CDS ตรวจจับการเคลื่อนที่และระยะการลำเลียงของธนบัตร
+
+--------------------------------------------------
+
+Step 2 : Note Validation
+
+ธนบัตรถูกส่งเข้าสู่ Note Transport (NT)
+
+ระหว่างทางจะผ่าน Sensor ดังนี้
+
+• SLL / SLRS
+  - ตรวจสอบความเอียงของธนบัตร (Skew Detection)
+
+• MTS
+  - ตรวจสอบความหนา (Thickness)
+  - ตรวจจับธนบัตรซ้อน (Double Note)
+  - ตรวจสอบความกว้างของธนบัตร
+
+หากค่าที่ตรวจสอบอยู่ในเกณฑ์
+→ ถือว่าเป็น Qualified Note
+
+หากไม่ผ่าน
+→ ระบบส่งไป Reject
+
+--------------------------------------------------
+
+Step 3 : Bundle Transport
+
+ธนบัตรที่ผ่านการตรวจสอบ
+
+↓
+
+เข้าสู่ Main Transport
+
+↓
+
+BRDS (Bundle Reject Diverter Solenoid)
+
+กำหนดเส้นทาง
+
+- ไป Note Stacker
+หรือ
+- ไป Reject
+
+--------------------------------------------------
+
+Step 4 : Note Stacking
+
+ธนบัตรถูกส่งเข้า
+
+Note Stacker (NS)
+
+โดยมี
+
+TES
+ตรวจสอบการเข้าของธนบัตร
+
+SCS
+ตรวจสอบจำนวนธนบัตรภายใน Stacker
+
+SM (Stacking Motor)
+
+จัดเรียงธนบัตรให้เป็นชุดเดียว (Bundle)
+
+--------------------------------------------------
+
+Step 5 : Bundle Presentation
+
+เมื่อครบจำนวนที่ลูกค้าถอน
+
+↓
+
+SM ผลัก Bundle
+
+↓
+
+เข้าสู่ Presenter Transport
+
+↓
+
+PCS (Presenter Check Sensor)
+
+ตรวจสอบว่าชุดธนบัตรเข้าสู่ Presenter แล้ว
+
+↓
+
+Shutter เปิด
+
+↓
+
+PES (Presenter Exit Sensor)
+
+ตรวจสอบว่าธนบัตรถูกส่งถึงช่องรับเงิน
+
+--------------------------------------------------
+
+Step 6 : Customer Pickup
+
+ลูกค้ารับธนบัตร
+
+ระบบตรวจสอบ
+
+Presenter Sensor
+
+หากลูกค้ารับเงิน
+
+Transaction Complete
+
+--------------------------------------------------
+
+Step 7 : Retract (หากลูกค้าไม่รับเงิน)
+
+เมื่อหมดเวลาที่กำหนด
+
+↓
+
+TDS (Transport Diverter Solenoid)
+
+เปลี่ยนเส้นทาง
+
+↓
+
+ธนบัตรเข้าสู่
+
+Retract Vault (RV)
+
+↓
+
+Transaction Finish
+
+=========================================
+Cash Flow Knowledge Base
+=========================================
+
+Title = Bundle Reject Process
+
+Description =
+Bundle Reject คือกระบวนการที่เครื่องปฏิเสธธนบัตรทั้งชุด (Bundle) และส่งกลับเข้าสู่ Reject Vault เมื่อพบความผิดปกติที่ไม่สามารถจ่ายเงินให้ลูกค้าได้อย่างปลอดภัย เช่น จำนวนธนบัตรไม่ถูกต้อง ธนบัตรติดขัด หรือเกิดความผิดปกติระหว่างการลำเลียงหลังจากจัดชุดธนบัตรแล้ว
+
+----------------------------------------
+
+Process =
+
+Step 1 : Note Feeding
+
+- Feeding Motor (FM) ฟีดธนบัตรจาก Note Cassette
+- FCS ตรวจจับการฟีดธนบัตร
+- CDS ตรวจจับการเคลื่อนที่ของธนบัตร
+
+----------------------------------------
+
+Step 2 : Note Validation
+
+ธนบัตรเข้าสู่ Note Transport
+
+ผ่านการตรวจสอบโดย
+
+- SLL
+- MTS
+- Sensor ภายใน Note Transport
+
+ธนบัตรทุกใบผ่านการตรวจสอบ
+
+↓
+
+เข้าสู่ Note Stacker
+
+----------------------------------------
+
+Step 3 : Bundle Stacking
+
+SM (Stacking Motor)
+
+จัดเรียงธนบัตรทั้งหมดเป็น Bundle
+
+TES
+
+ตรวจสอบการเข้าสู่ Stacker
+
+SCS
+
+ตรวจสอบการจัดเก็บธนบัตร
+
+----------------------------------------
+
+Step 4 : Bundle Transport
+
+ชุดธนบัตรถูกส่งออกจาก Note Stacker
+
+↓
+
+เข้าสู่ Main Transport
+
+----------------------------------------
+
+Step 5 : Bundle Reject
+
+ระบบตรวจพบความผิดปกติ
+
+↓
+
+BRDS (Bundle Reject Diverter Solenoid)
+
+ทำงาน
+
+↓
+
+เปลี่ยนเส้นทางธนบัตร
+
+↓
+
+Reject Transport
+
+↓
+
+Reject Vault (RV)
+
+----------------------------------------
+
+System Result =
+
+ธนบัตรทั้งชุด
+
+↓
+
+Reject Vault
+
+↓
+
+ไม่ส่งถึง Presenter
+
+↓
+
+ลูกค้าไม่ได้รับเงิน
+
+↓
+
+Transaction Cancel หรือ Retry ตามเงื่อนไขของระบบ
+
+----------------------------------------
+
+Possible Reject Cause =
+
+- Bundle Jam
+- Transport Jam
+- Bundle Count Error
+- Presenter Error
+- Shutter Error
+- Transport Timeout
+- Bundle Too Thick
+- Bundle Position Error
+- BRDS Failure
+- Sensor Detection Error
+
+----------------------------------------
+
+Inspection =
+
+- ตรวจ BRDS Solenoid
+- ตรวจ TDS Solenoid
+- ตรวจ Main Transport
+- ตรวจ Roller
+- ตรวจสายพาน
+- ตรวจ TES
+- ตรวจ PCS
+- ตรวจ Presenter
+- ตรวจ Reject Transport
+- ตรวจ Reject Vault
+- ตรวจ Sensor ทุกตำแหน่งในเส้นทาง Bundle
+
+----------------------------------------
+
+Related Unit =
+
+FM
+NF
+NT
+NS
+SM
+TES
+BRDS
+PCS
+PES
+RV
+
+=========================================
+Cash Flow Knowledge Base
+=========================================
+
+Title = Retract Process
+
+Description =
+Retract คือกระบวนการดึงธนบัตรกลับอัตโนมัติ เมื่อเครื่องได้ส่งธนบัตรออกไปยังช่องรับเงิน (Presenter) แล้ว แต่ลูกค้าไม่รับเงินภายในเวลาที่กำหนด หรือปล่อยให้หมดเวลา ระบบจะดึงธนบัตรกลับและส่งเข้าสู่ Reject Vault (Retract Vault) เพื่อป้องกันการสูญหายของเงิน
+
+----------------------------------------
+
+Trigger Condition =
+
+- ลูกค้าไม่รับเงินภายในเวลาที่กำหนด
+- Customer Timeout
+- Forgotten Cash
+- Presenter Timeout
+
+----------------------------------------
+
+Process =
+
+Step 1 : Cash Presentation
+
+- ธนบัตรถูกส่งจาก Note Stacker
+- ผ่าน Presenter Transport
+- PCS ตรวจสอบว่าธนบัตรเข้าสู่ Presenter
+- PES ตรวจสอบว่าธนบัตรอยู่ที่ช่องรับเงิน
+- Shutter เปิดเพื่อให้ลูกค้ารับเงิน
+
+↓
+
+Step 2 : Customer Waiting
+
+เครื่องเริ่มนับเวลารอ
+
+หากลูกค้ารับเงิน
+
+↓
+
+Transaction Complete
+
+หากหมดเวลารอ
+
+↓
+
+เข้าสู่ Retract Process
+
+----------------------------------------
+
+Step 3 : Retract
+
+TDS (Transport Diverter Solenoid)
+
+ทำงาน
+
+↓
+
+เปลี่ยนเส้นทางการลำเลียง
+
+↓
+
+Transport Main Motor
+
+หมุนย้อนกลับ
+
+↓
+
+ดึงธนบัตรกลับจาก Presenter
+
+↓
+
+Reject Transport
+
+↓
+
+Reject Vault (RV)
+
+----------------------------------------
+
+System Result =
+
+ธนบัตรทั้งหมด
+
+↓
+
+Reject Vault
+
+↓
+
+Transaction Complete
+
+↓
+
+บันทึกเหตุการณ์ Retract
+
+----------------------------------------
+
+Possible Cause =
+
+- Customer Timeout
+- Customer Forgot Cash
+- Presenter Timeout
+- Customer Walk Away
+- Cash Not Collected
+
+----------------------------------------
+
+Inspection =
+
+- ตรวจ TDS Solenoid
+- ตรวจ Presenter
+- ตรวจ Shutter
+- ตรวจ PCS
+- ตรวจ PES
+- ตรวจ Roller
+- ตรวจ Transport Belt
+- ตรวจ Main Transport
+- ตรวจ Reject Transport
+- ตรวจ Reject Vault
+- ตรวจ Sensor ทุกตำแหน่งในเส้นทาง Retract
+
+----------------------------------------
+
+Related Unit =
+
+NP
+PCS
+PES
+TDS
+TMM
+NT
+RV
+"""
+
+
+
+manual_db = {
+        "10101": "ATMSNcontrol unit Parametererror Ignore None -> พารามิเตอร์ผิดพลาด (ระบบควบคุม ATM SN) ระบบให้ข้ามไปได้ ไม่ต้องดำเนินการใด ๆ",
+        "10102": "ATMSNcontrol unit NolegalATMsequence number WriteasATMserialnumber None -> ไม่พบหมายเลขลำดับ ATM ที่ถูกต้อง ระบบจะบันทึกเป็นหมายเลขซีเรียลของตู้ ATM แทน",
+        
+
+    }
+# =========================================================================
+# --- [ส่วนที่ 3: ระบบประมวลผลดั้งเดิม ปรับปรุงฟังก์ชันตรวจจับโค้ดข้ามเวลาตัวเก่งล่าสุด] ---
+# =========================================================================
+
+def process_log_line(line):
+    line_upper = line.upper()
+    
+    # 1. ตรวจจับ PAPER FAULT เฉพาะกรณีที่มีคำนี้จริง
+    # ห้ามใช้เพียงคำว่า FAULT เพราะจะทำให้ Fault ของอุปกรณ์อื่นถูกระบุผิดเป็นกระดาษติด
+    if "PAPER FAULT" in line_upper:
+        time_match = re.search(r"\d{2}:\d{2}:\d{2}(?:\.\d+)?", line)
+        log_time = time_match.group(0) if time_match else "Unknown Time"
+        return {
+            "time": log_time,
+            "reason": "PAPER FAULT",
+            "line": line.strip(),
+            "solution": manual_db.get(
+                "PAPER FAULT",
+                "ตรวจสอบกระดาษ เครื่องพิมพ์ สาย USB/Communication และ Error Code ที่เกี่ยวข้อง"
+            )
+        }, None
+           
+    # 2. ตรวจจับเรื่อง RECOVERY FAIL ของเดิมของคุณเป๊ะๆ
+    if "RECOVERY FAIL" in line_upper:
+        return None, "recovery_fail"
+
+    # 3. ตรวจจับเรื่อง MAXIMUM RETRACT FAIL ของเดิมของคุณเป๊ะๆ
+    if "MAXIMUM RETRACT FAIL" in line_upper:
+        return None, "retract_fail"
+    
+    # คัดกรองข้อมูลธุรกรรมที่ไม่ใช่ Error แต่ไม่ตัด CARD/PRINTER แบบเหมารวม
+    # เพราะสองคำนี้อาจเป็นเหตุขัดข้องของอุปกรณ์จริง
+    noise_keywords = ["BILL", "*", "Terminal Id", "Card Number", "Amount Entry Field", "REF", "SEQUENCE NO", 
+    "RECEIPT", "OPCODE", "AMOUNT", "BILL COUNT", "PHONE NO", "FROM ACCOUNT", "WITHDRAWAL AMOUNT",
+ "TRACK2", "TRACK 2", "PAN", "CARD EXPIRY", "APPROVAL CODE", "STAN", "RRN", "AUTH CODE", 
+"TRACE", "REFERENCE NUMBER", "TRANSACTION ID", "BALANCE", "CURRENCY", "SEQUENCE", "1000B", "1000A", "0500", "00100", "S0_I1", "S0_I0",]
+    has_error_signal = any(word in line_upper for word in ERROR_KEYWORDS)
+    if not has_error_signal and any(keyword in line_upper for keyword in noise_keywords):
+        return None, None
+        
+    is_matched = False
+    detected_reason = ""
+    solution_text = "No manual suggestion available for this specific keyword."
+
+    # 🎯 แก้ไขการดักจับเวลาในบรรทัดเพื่อพ่วงต่อ TIMESTAMP ป้องกันระบบค้าง
+    time_match = re.search(r'\d{2}:\d{2}:\d{2}(?:\.\d+)?', line)
+    log_time = time_match.group(0) if time_match else "Unknown Time"
+
+    # 🌟 [เพิ่มระบบดักจับตัวเลขข้ามเวลาตัวเก่งล่าสุด]: เช็กกลุ่มคำ Error/Failed ก่อนเป็นอันดับแรกสุดเพื่อล็อกความเสี่ยง
+    has_error_keyword = any(err_word in line_upper for err_word in ERROR_KEYWORDS)
+    
+    if has_error_keyword:
+        # สแกนหาชุดตัวเลขทั้งหมดในบรรทัด Log (ข้ามตัวเลขเวลา ย้อนไปคัดรหัสแท้)
+        numbers_found = CODE_PATTERN.findall(line)
+        for code_str in numbers_found:
+            # ข้ามตัวเลขบอกเวลาสั้นๆ ทั่วไป
+            if len(code_str) < 3 and not code_str.startswith('-'):
+                continue
+                
+            # ตรวจสอบเช็กคู่มือใน manual_db (แบบ String)
+            if code_str in manual_db:
+                is_matched = True
+                detected_reason = code_str
+                solution_text = manual_db[code_str]
+                break
+                
+            # ตรวจสอบเช็กคู่มือใน manual_db (แบบ Integer เผื่อไว้)
+            try:
+                if int(code_str) in manual_db:
+                    is_matched = True
+                    detected_reason = code_str
+                    solution_text = manual_db[int(code_str)]
+                    break
+            except ValueError:
+                pass
+
+    # 1. ของเดิมของคุณ: หากระบบกลุ่ม Error ด้านบนไม่ทำงานหรือหาโค้ดไม่เจอ ให้วิ่งเช็กตามระบบ Keywords หลักต่อ
+    if not is_matched:
+        for keyword in search_keywords:
+            clean_keyword = keyword.replace(r'\b', '').strip()
+            
+            # ถ้าเป็นคำสั้นพิเศษ บังคับตรวจสอบแบบคำโดดเดี่ยวๆ
+            if keyword in [r"\bNF\b", r"\bNT\b"]:
+                has_match = re.search(keyword, line_upper)
+            else:
+                has_match = clean_keyword in line_upper
+
+            if has_match:
+                is_matched = True
+                detected_reason = clean_keyword
+                # ดึงคำแปลจากคลังข้อมูล
+                if clean_keyword in manual_db:
+                    solution_text = manual_db[clean_keyword]
+                elif clean_keyword == "-14":
+                    solution_text = "Note jam flag is active."
+                elif "NETWORK" in clean_keyword:
+                    solution_text = "Network lost or disconnected."
+                break
+
+    # 2. ของเดิมของคุณ: ตรวจเช็กจากระบบ Regex ตัวเลขสล๊อตสำรองกรณีคำหลุด
+    if not is_matched:
+        all_digit_groups = re.findall(r'\b\d+\b', line_upper)
+        negative_codes = re.findall(r'-\d{3}\b', line_upper)
+        
+        for neg_code in negative_codes:
+            if neg_code in manual_db:
+                is_matched = True
+                detected_reason = neg_code
+                solution_text = manual_db[neg_code]
+                break
+            else:
+                is_matched = True
+                detected_reason = neg_code
+                solution_text = f"พบรหัสติดลบระบบ {neg_code}"
+                break
+
+        if not is_matched:
+            for num_group in all_digit_groups:
+                if len(num_group) == 4 or len(num_group) == 5:
+                    if num_group in manual_db:
+                        is_matched = True
+                        detected_reason = f"Error Code {num_group}"
+                        solution_text = manual_db[num_group]
+                        break
+
+    if is_matched:
+        return {
+            "time": log_time,
+            "line": line.strip(),
+            "reason": detected_reason,
+            "solution": solution_text
+        }, None
+        
+    return None, None
+
+def decode_uploaded_bytes(raw_bytes):
+    """ถอดรหัสไฟล์ Log โดยรองรับ UTF-8 และภาษาไทยจากระบบ Windows"""
+    for encoding in ("utf-8-sig", "utf-8", "cp874", "tis-620", "latin-1"):
+        try:
+            return raw_bytes.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw_bytes.decode("utf-8", errors="replace")
+
+
+# --- ฟังก์ชันตัวช่วยวนลูปเนื้อหา Log เพื่อรวบรวมสถิติและผลลัพธ์ ของเดิมของคุณเป๊ะๆ ---
+def analyze_log_content(log_content, filename="File"):
+    found_count = 0
+    recovery_counter = 0
+    retract_fail_counter = 0
+    results_list = []
+    
+    for line in log_content.splitlines():
+        if "MAXIMUM RETRACT FAIL TIMES" in line:
+            retract_fail_counter += 1
+            
+        res, event_type = process_log_line(line)
+        
+        if event_type == "recovery_fail":
+            recovery_counter += 1
+        elif res:
+            found_count += 1
+            res["filename"] = filename
+            results_list.append(res)
+            
+    return results_list, recovery_counter, retract_fail_counter, found_count
+
 # === แบ่งหน้าต่างการทำงาน Streamlit เป็น 2 วิธีด้วย Key กำกับป้องกันปุ่มค้าง ===
 tab1, tab2 = st.tabs(["📁 [วิธีที่ 1] อัปโหลดไฟล์ Log (.txt / .zip)", "✍️ [วิธีที่ 2] พิมพ์คำค้นหาเดี่ยว หรือพิมพ์ Log"])
 
@@ -6874,7 +6875,7 @@ if uploaded_image is not None:
 
         # สามารถกำหนดโมเดล Vision แยกใน Streamlit Secrets ได้:
         # VISION_MODEL = "ชื่อโมเดลที่รองรับภาพ"
-        vision_model = st.secrets.get("VISION_MODEL", "deepseek-v4-flash")
+        vision_model = str(st.secrets.get("VISION_MODEL", "deepseek-v4-flash")).strip()
 
         with st.chat_message("assistant"):
             image_placeholder = st.empty()
@@ -6967,168 +6968,118 @@ if prompt:
 # --- ตอนที่ 2/4 : ค้นหา Manual DB ก่อน (ใช้ฟรี)
 # =========================================================================
 
+def _normalize_manual_key(value):
+    """ทำคีย์ให้เทียบกันได้ โดยไม่แก้ไขข้อมูลเดิมใน manual_db"""
+    return str(value).strip().upper()
+
+
+def _extract_search_terms(text):
+    """ดึงรหัสและคำสำคัญจากคำถาม/Log โดยรองรับ -209, 12117, 1000A ฯลฯ"""
+    raw = str(text or "").strip()
+    terms = []
+
+    if raw:
+        terms.append(raw)
+
+    # รหัสติดลบ, ตัวเลข และรหัสผสมตัวอักษร เช่น -209, 12117, 1000A, S0_I1
+    for token in re.findall(r"(?<![A-Z0-9_])-?\d+[A-Z0-9_]*|[A-Z]+[A-Z0-9_]*\d+[A-Z0-9_]*", raw.upper()):
+        token = token.strip()
+        if token and token not in terms:
+            terms.append(token)
+
+    # คำ/วลีที่มีความหมาย แยกจากประโยค แต่ไม่เอาคำสั้นเกินไป
+    for token in re.findall(r"[A-Z][A-Z0-9_\-]{2,}|[ก-๙]{3,}", raw.upper()):
+        token = token.strip()
+        if token and token not in terms:
+            terms.append(token)
+
+    return terms
+
+
+def search_manual_database(query, limit=20):
+    """ค้นหา DB แบบ exact ก่อน แล้วค่อยค้นหาแบบคำสำคัญอย่างปลอดภัย"""
+    if "manual_db" not in globals() or not isinstance(manual_db, dict):
+        return []
+
+    query_text = str(query or "").strip()
+    if not query_text:
+        return []
+
+    normalized_map = {_normalize_manual_key(k): (k, v) for k, v in manual_db.items()}
+    terms = _extract_search_terms(query_text)
+    found = []
+    used_keys = set()
+
+    def add_result(original_key, value):
+        marker = str(original_key)
+        if marker in used_keys or len(found) >= limit:
+            return
+        used_keys.add(marker)
+        found.append(f"📌 **รหัส / คำสำคัญ : {original_key}**\n\n{value}")
+
+    # 1) ตรงคีย์เต็มหรือตรงรหัสที่ดึงจากข้อความ
+    for term in terms:
+        normalized = _normalize_manual_key(term)
+        if normalized in normalized_map:
+            original_key, value = normalized_map[normalized]
+            add_result(original_key, value)
+
+    # 2) ใช้ระบบวิเคราะห์ Log เดิมช่วยค้น โดยไม่แก้ฟังก์ชันเดิม
+    try:
+        result, _ = process_log_line(query_text)
+        if result:
+            reason = result.get("reason", "ข้อมูลจากระบบวิเคราะห์เดิม")
+            solution = result.get("solution", "")
+            marker = f"PROCESS::{reason}::{solution}"
+            if marker not in used_keys and solution:
+                used_keys.add(marker)
+                found.append(f"📌 **ผลจากระบบวิเคราะห์ Log เดิม : {reason}**\n\n{solution}")
+    except Exception:
+        pass
+
+    # 3) ค้นหาแบบข้อความ เฉพาะคำที่ยาวพอ เพื่อลดการจับผิดจากคำสั้น ๆ
+    meaningful_terms = [
+        _normalize_manual_key(t) for t in terms
+        if len(_normalize_manual_key(t).replace("-", "")) >= 3
+    ]
+
+    if len(found) < limit and meaningful_terms:
+        for key, value in manual_db.items():
+            key_text = _normalize_manual_key(key)
+            value_text = _normalize_manual_key(value)
+
+            if any(term in key_text or term in value_text for term in meaningful_terms):
+                add_result(key, value)
+
+            if len(found) >= limit:
+                break
+
+    return found
+
+
 if prompt:
-
-    matches = []
-
-    prompt_lower = prompt_text.lower()
-
-
-   # ===============================
-# ค้นหาใน manual_db
-# ===============================
-
-matches = []
-
-if "manual_db" in globals():
-
-    # =====================================================
-    # ตรวจจับ Error Code จากคำถาม
-    # รองรับ เช่น:
-    # 15747
-    # Error 15747
-    # Error Code 15747
-    # พบปัญหา -209
-    # =====================================================
-
-    # ป้องกัน prompt ไม่ใช่ string
-    prompt_text = str(prompt or "")
-    prompt_lower = prompt_text.lower()
-
-    detected_codes = re.findall(
-    r"(?<![A-Za-z0-9])-?\d{2,10}(?![A-Za-z0-9])",
-    prompt_text
-)
-    # ลบรหัสซ้ำ แต่คงลำดับเดิม
-    detected_codes = list(dict.fromkeys(detected_codes))
-
-    found_keys = set()
-
-    # =====================================================
-    # ค้นหาจาก Error Code ก่อน
-    # =====================================================
-
-    for detected_code in detected_codes:
-
-        code_variants = [
-            detected_code,
-            detected_code.strip(),
-            detected_code.upper(),
-            detected_code.lower(),
-        ]
-
-        # รองรับกรณี key ใน manual_db เป็นตัวเลข
-        try:
-            code_variants.append(int(detected_code))
-        except (ValueError, TypeError):
-            pass
-
-        for code_key in code_variants:
-
-            if code_key in manual_db:
-
-                unique_key = str(code_key)
-
-                if unique_key not in found_keys:
-
-                    matches.append(
-                        f"📌 **รหัส / คำสำคัญ : {detected_code}**\n\n"
-                        f"{manual_db[code_key]}"
-                    )
-
-                    found_keys.add(unique_key)
-
-                break
-
-    # =====================================================
-    # ถ้าไม่พบจาก Error Code ให้ใช้การค้นหาแบบเดิม
-    # =====================================================
-
-    if not matches:
-
-        exact_key = prompt_text.strip()
-        exact_variants = [
-            exact_key,
-            exact_key.upper(),
-            exact_key.lower(),
-        ]
-
-        exact_found = False
-
-        for key_variant in exact_variants:
-
-            if key_variant in manual_db:
-
-                matches.append(
-                    f"📌 **รหัส / คำสำคัญ : {key_variant}**\n\n"
-                    f"{manual_db[key_variant]}"
-                )
-
-                exact_found = True
-                break
-
-        if not exact_found:
-
-            for key, value in manual_db.items():
-
-                key_text = str(key).strip().lower()
-                value_text = str(value).lower()
-
-                # ป้องกัน key ว่างหรือสั้นเกินไป
-                if not key_text or len(key_text) < 2:
-                    continue
-
-                if key_text in prompt_lower or prompt_lower in value_text:
-
-                    unique_key = str(key)
-
-                    if unique_key not in found_keys:
-
-                        matches.append(
-                            f"📌 **รหัส / คำสำคัญ : {key}**\n\n"
-                            f"{value}"
-                        )
-
-                        found_keys.add(unique_key)
-
-                if len(matches) >= 20:
-                    break
+    matches = search_manual_database(prompt, limit=20)
 
     if matches:
-
         st.session_state.manual_result = (
             "## 🔍 พบข้อมูลจาก Manual Database\n\n"
             + "\n\n----------------------\n\n".join(matches)
         )
-
-
     else:
+        st.session_state.manual_result = "❌ ไม่พบข้อมูลตรงกับฐานข้อมูล Manual"
 
-        st.session_state.manual_result = (
-            "❌ ไม่พบข้อมูลตรงกับฐานข้อมูล Manual"
-        )
-
-
-    # แสดงผลจาก DB
-
+    # แสดงผลค้นหาจาก DB ก่อน โดยยังไม่เรียก AI และไม่เสีย Token
     with st.chat_message("assistant"):
-
-        st.markdown(
-            st.session_state.manual_result
-        )
-
-
-    # ===============================
-    # เก็บผล DB เข้า History
-    # ===============================
+        st.markdown(st.session_state.manual_result)
 
     st.session_state.messages.append(
         {
             "role": "assistant",
-            "content": st.session_state.manual_result
+            "content": st.session_state.manual_result,
         }
     )
-    # =========================================================================
+
+# =========================================================================
 # --- ตอนที่ 3/4 : ปุ่มวิเคราะห์ด้วย AI (เรียก DeepSeek เมื่อกดเท่านั้น)
 # =========================================================================
 
@@ -7152,7 +7103,7 @@ if st.session_state.current_prompt:
 
                 response = client.chat.completions.create(
 
-                    model = st.secrets.get("TEXT_MODEL", "deepseek-v4-flash"),
+                    model=str(st.secrets.get("TEXT_MODEL", "deepseek-v4-flash")).strip() or "deepseek-v4-flash",
 
                     temperature=0.2,
 
@@ -7248,7 +7199,7 @@ if st.session_state.current_prompt:
 
 ข้อมูลจาก Manual Database:
 
-{st.session_state.manual_result}
+{st.session_state.manual_result[:12000]}
 
 
 ข้อมูลจาก Cash Flow Knowledge Base:
@@ -7285,10 +7236,20 @@ if st.session_state.current_prompt:
 
 
             except Exception as e:
-
-                message_placeholder.error(
-                    f"❌ AI Error : {str(e)}"
-                )
+                error_text = str(e)
+                if "402" in error_text or "Insufficient Balance" in error_text:
+                    message_placeholder.error(
+                        "❌ เครดิต DeepSeek API ไม่เพียงพอ กรุณาเติมเครดิตแล้วลองใหม่\n\n"
+                        f"รายละเอียด: {error_text}"
+                    )
+                elif "model" in error_text.lower() and ("not found" in error_text.lower() or "invalid" in error_text.lower()):
+                    message_placeholder.error(
+                        "❌ ชื่อโมเดลใน TEXT_MODEL ไม่ถูกต้องหรือบัญชียังเข้าใช้ไม่ได้ "
+                        "กรุณาตรวจค่า Streamlit Secrets\n\n"
+                        f"รายละเอียด: {error_text}"
+                    )
+                else:
+                    message_placeholder.error(f"❌ AI Error : {error_text}")
 
 
 
