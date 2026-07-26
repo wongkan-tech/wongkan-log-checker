@@ -6990,10 +6990,10 @@ if "manual_db" in globals():
     # =====================================================
 
     # ป้องกัน prompt ไม่ใช่ string
-prompt_text = str(prompt or "")
-prompt_lower = prompt_text.lower()
+    prompt_text = str(prompt or "")
+    prompt_lower = prompt_text.lower()
 
-detected_codes = re.findall(
+    detected_codes = re.findall(
     r"(?<![A-Za-z0-9])-?\d{2,10}(?![A-Za-z0-9])",
     prompt_text
 )
