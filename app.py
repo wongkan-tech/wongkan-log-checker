@@ -6971,7 +6971,7 @@ if prompt:
 
     matches = []
 
-    prompt_lower = prompt.lower()
+    prompt_lower = prompt_text.lower()
 
 
     # ===============================
@@ -6989,11 +6989,14 @@ if "manual_db" in globals():
     # พบปัญหา -209
     # =====================================================
 
-    detected_codes = re.findall(
-        r"(?<![A-Za-z0-9])-?\d{2,10}(?![A-Za-z0-9])",
-        prompt
-    )
+    # ป้องกัน prompt ไม่ใช่ string
+prompt_text = str(prompt or "")
+prompt_lower = prompt_text.lower()
 
+detected_codes = re.findall(
+    r"(?<![A-Za-z0-9])-?\d{2,10}(?![A-Za-z0-9])",
+    prompt_text
+)
     # ลบรหัสซ้ำ แต่คงลำดับเดิม
     detected_codes = list(dict.fromkeys(detected_codes))
 
@@ -7041,8 +7044,7 @@ if "manual_db" in globals():
 
     if not matches:
 
-        exact_key = prompt.strip()
-
+        exact_key = prompt_text.strip()
         exact_variants = [
             exact_key,
             exact_key.upper(),
