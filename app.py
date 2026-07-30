@@ -41157,6 +41157,22 @@ with st.expander("📞 เบอร์โทรช่าง — กดเพื�
 def search_technician(query):
     query = query.lower().strip()
 
+zone_alias = {
+    "บางนา": "bangna",
+    "เซ็นเตอร์": "center",
+    "กลาง": "center",
+    "เหนือ": "north",
+    "ใต้": "south",
+    "เซาท์": "south",
+    "ตะวันตก": "west",
+    "เวสต์": "west",
+    "ตะวันออก": "east",
+    "อีสต์": "east",
+}
+
+if query in zone_alias:
+    query = zone_alias[query]
+
     result = []
 
     for tech in technician_data:
