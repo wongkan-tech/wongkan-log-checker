@@ -40723,136 +40723,10 @@ manual_db = {
         ],
         "manual_page": None
     },
-}
-# ===================================
-# Technician Database
-# ฐานข้อมูลรายชื่อและเบอร์โทรช่าง
-# ===================================
-
-technician_db = {
-
-    "กิตติกร แซ่เตียว": {
-        "zone": "Bangna",
-        "province": "กรุงเทพฯ, สมุทรปราการ",
-        "tel": "085-145-7994"
-    },
-
-    "ภานุทัต พิสดาร": {
-        "zone": "Bangna",
-        "province": "กรุงเทพฯ, สมุทรปราการ",
-        "tel": "086-753-1184"
-    },
-
-    "เวธิต ขันคุปต์": {
-        "zone": "Bangna",
-        "province": "กรุงเทพฯ, สมุทรปราการ",
-        "tel": "086-774-4664"
-    },
-
-    "กันต์ธีร์ ธรรมเกษร": {
-        "zone": "Center",
-        "province": "อยุธยา, อ่างทอง",
-        "tel": "097-281-2687"
-    }
-
-}
-# ===================================
-# ฟังก์ชันค้นหารายชื่อและเบอร์โทรช่าง
-# ===================================
-
-def search_technician(query):
-    """
-    ค้นหาช่างจากชื่อ, Zone, จังหวัด หรือเบอร์โทร
-    คืนค่าเป็นข้อความเมื่อพบข้อมูล
-    คืนค่า None เมื่อไม่พบ
-    """
-
-    query_text = str(query or "").strip().lower()
-
-    if not query_text:
-        return None
-
-    # ทำให้เบอร์โทรค้นหาได้ทั้งแบบมีขีดและไม่มีขีด
-    query_phone = (
-        query_text
-        .replace("-", "")
-        .replace(" ", "")
-    )
-
-    results = []
-
-    for technician_name, technician_info in technician_db.items():
-
-        name = str(technician_name).strip()
-        zone = str(technician_info.get("zone", "")).strip()
-        province = str(technician_info.get("province", "")).strip()
-        tel = str(technician_info.get("tel", "")).strip()
-
-        searchable_text = " ".join(
-            [
-                name.lower(),
-                zone.lower(),
-                province.lower(),
-                tel.lower()
-            ]
-        )
-
-        tel_without_dash = (
-            tel.lower()
-            .replace("-", "")
-            .replace(" ", "")
-        )
-
-        matched = (
-            query_text in searchable_text
-            or name.lower() in query_text
-            or zone.lower() in query_text
-            or any(
-                province_name.strip().lower() in query_text
-                for province_name in province.split(",")
-                if province_name.strip()
-            )
-            or (
-                len(query_phone) >= 3
-                and query_phone in tel_without_dash
-            )
-        )
-
-        if matched:
-            results.append(
-                {
-                    "name": name,
-                    "zone": zone,
-                    "province": province,
-                    "tel": tel
-                }
-            )
-
-    if not results:
-        return None
-
-    response_lines = [
-        "📞 **ข้อมูลติดต่อช่างที่ค้นพบ**",
-        ""
-    ]
-
-    for index, item in enumerate(results, start=1):
-        response_lines.extend(
-            [
-                f"**{index}. {item['name']}**",
-                f"- Zone: {item['zone']}",
-                f"- จังหวัดที่รับผิดชอบ: {item['province']}",
-                f"- เบอร์โทร: [{item['tel']}](tel:{item['tel'].replace('-', '')})",
-                ""
-            ]
-        )
-
-    return "\n".join(response_lines)
            
 # ==========================================
 # Keyword Database
 # ==========================================
-keyword_db = {
            "MASTERBAAC": "📊 ข้อมูลระบบตู้ธนาคาร ธ.ก.ส. (BAAC):\n- ATM (Win10): MasterV2.0-A.GHO | Patch: B73 | Firmware: Version A4 (572 Unit)\n- ATM (Win11): MasterV2.0-B.GHO | Patch: DipChip_B38+ | Firmware: Version A4 (587 Unit)\n- ATN (Win11): MasterV2.0-C.GHO | Patch: DipChip_B38+ | Firmware: Version A4 (362 Unit)",
 
            "MASTERGSB": "📊 ข้อมูลระบบตู้ธนาคารออมสิน (GSB):\n- ADM: Master2.9_20250118 | Patch: BJ04_B630 | Firmware: UNV V28016BJ04 (12,130 Unit)\n- ATM: Master1.8_20250127 | Patch: B66_CardLess_20260120 | Firmware: Version 65 (450 Unit)",
@@ -41425,37 +41299,6 @@ elif use_uploaded_log and uploaded_log_text.strip():
     prompt = uploaded_log_text
 
 if prompt:
-      # =====================================
-    # ตรวจสอบคำถามเกี่ยวกับช่าง / เบอร์โทร
-    # =====================================
-
-    phone_keywords = [
-    "ช่าง",
-    "เบอร์",
-    "โทร",
-    "โทรศัพท์",
-    "จังหวัด",
-    "zone"
-]
-
-    technician_result = None
-
-    if any(k in prompt.lower() for k in phone_keywords):
-       technician_result = search_technician(prompt)
-
-    if technician_result:
-
-        st.session_state.messages.append(
-            {
-                "role": "assistant",
-                "content": technician_result
-            }
-        )
-
-   with st.chat_message("assistant"):
-            st.markdown(technician_result)
-
-        st.stop()
 
     st.session_state.current_prompt = prompt
 
