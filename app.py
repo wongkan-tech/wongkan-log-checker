@@ -41051,81 +41051,6 @@ with tab2:
                 st.success(f"**คำอธิบายคู่มือและแนวทางแก้ไข:** {manual_db[user_input_upper]}")
             else:
                 st.warning("❌ ไม่พบข้อมูลรหัสความผิดพลาดหรือข้อความตรงตามเงื่อนไขในระบบแมนนวลของคุณ")
-
-
-# =========================================================
-# ปุ่มแสดงเบอร์โทรช่าง
-# =========================================================
-with st.expander("📞 เบอร์โทรช่าง — กดเพื่อดูรายละเอียด", expanded=False):
-
-    technician_data = [
-        {
-            "Zone": "Bangna",
-            "ชื่อ-สกุล": "กิตติกร แซ่เตียว",
-            "จังหวัด": "กรุงเทพฯ, สมุทรปราการ",
-            "เบอร์โทร": "085-145-7994"
-        },
-        {
-            "Zone": "Bangna",
-            "ชื่อ-สกุล": "ภานุทัต พิสดาร",
-            "จังหวัด": "กรุงเทพฯ, สมุทรปราการ",
-            "เบอร์โทร": "086-753-1184"
-        },
-        {
-            "Zone": "Bangna",
-            "ชื่อ-สกุล": "เวธิต ขันคุปต์",
-            "จังหวัด": "กรุงเทพฯ, สมุทรปราการ",
-            "เบอร์โทร": "086-774-4664"
-        },
-        {
-            "Zone": "Center",
-            "ชื่อ-สกุล": "กันต์ธีร์ ธรรมเกษร",
-            "จังหวัด": "อยุธยา, อ่างทอง",
-            "เบอร์โทร": "097-281-2687"
-        }
-    ]
-    # สร้างข้อมูลรายชื่อช่างสำหรับส่งให้ AI
-    technician_context = "\n".join(
-        [
-            (
-                f"Zone: {item['Zone']} | "
-                f"ชื่อ-สกุล: {item['ชื่อ-สกุล']} | "
-                f"จังหวัด: {item['จังหวัด']} | "
-                f"เบอร์โทร: {item['เบอร์โทร']}"
-            )
-            for item in technician_data
-        ]
-    )
-
-    technician_df = pd.DataFrame(technician_data)
-
-    search_technician = st.text_input(
-        "🔎 ค้นหาชื่อ จังหวัด Zone หรือเบอร์โทร",
-        key="technician_phone_search"
-    )
-
-    if search_technician:
-        search_text = search_technician.strip().lower()
-
-        technician_df = technician_df[
-            technician_df.astype(str)
-            .apply(
-                lambda row: row.str.lower().str.contains(
-                    search_text,
-                    regex=False
-                ).any(),
-                axis=1
-            )
-        ]
-
-    if technician_df.empty:
-        st.warning("ไม่พบข้อมูลช่างที่ค้นหา")
-    else:
-        st.dataframe(
-            technician_df,
-            use_container_width=True,
-            hide_index=True
-        )
 # ย้ายคลังกล่องลิงก์ดาวน์โหลดคู่มือให้สะท้อนเงาสวยงาม
 st.markdown("""
     <div class="folder-link-box">
@@ -41544,10 +41469,6 @@ if st.session_state.current_prompt:
 - วิเคราะห์ Security
 - วิเคราะห์ข้อมูลจาก manual_db
 -ใช้ข้อมูลจาก manual_db เป็นข้อมูลอ้างอิงลำดับแรก
-- สามารถค้นหาและตอบข้อมูลรายชื่อช่าง Zone จังหวัด และเบอร์โทรจากฐานข้อมูลรายชื่อช่าง
-- หากผู้ใช้ถามชื่อช่าง จังหวัด Zone หรือเบอร์โทร ให้ตอบจากฐานข้อมูลรายชื่อช่างที่แนบมา
-- ห้ามสร้างชื่อช่างหรือเดาเบอร์โทรขึ้นเอง
-- หากพบช่างหลายคนในพื้นที่เดียวกัน ให้แสดงรายชื่อและเบอร์โทรทั้งหมด
 - แนะนำขั้นตอนตรวจสอบสำหรับ Technician
 - เสนอแนวทางแก้ไขที่เป็นไปได้พร้อมเหตุผล
 
@@ -41592,11 +41513,6 @@ if st.session_state.current_prompt:
 ข้อมูลจาก Cash Flow Knowledge Base:
 
 {CASH_FLOW_KNOWLEDGE_BASE}
-
-
-ข้อมูลรายชื่อและเบอร์โทรช่าง:
-
-{technician_context}
 
 
 กรุณาวิเคราะห์เพิ่มเติม
