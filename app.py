@@ -41438,10 +41438,10 @@ if prompt:
     "zone"
 ]
 
-technician_result = None
+    technician_result = None
 
     if any(k in prompt.lower() for k in phone_keywords):
-    technician_result = search_technician(prompt)
+       technician_result = search_technician(prompt)
 
     if technician_result:
 
@@ -41452,7 +41452,7 @@ technician_result = None
             }
         )
 
-        with st.chat_message("assistant"):
+   with st.chat_message("assistant"):
             st.markdown(technician_result)
 
         st.stop()
