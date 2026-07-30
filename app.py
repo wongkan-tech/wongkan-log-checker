@@ -1875,10 +1875,10 @@ if any(keyword.upper() in line_upper for keyword in noise_keywords):
 has_error_signal = any(
     word in line_upper for word in ERROR_KEYWORDS
 )
-        
-    is_matched = False
-    detected_reason = ""
-    solution_text = "No manual suggestion available for this specific keyword."
+
+is_matched = False
+detected_reason = ""
+solution_text = "No manual suggestion available for this specific keyword."
 
     # 🎯 แก้ไขการดักจับเวลาในบรรทัดเพื่อพ่วงต่อ TIMESTAMP ป้องกันระบบค้าง
     time_match = re.search(r'\d{2}:\d{2}:\d{2}(?:\.\d+)?', line)
