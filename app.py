@@ -1857,7 +1857,7 @@ def process_log_line(line):
     # เพราะสองคำนี้อาจเป็นเหตุขัดข้องของอุปกรณ์จริง
     noise_keywords = ["BILL", "*", "Terminal Id", "Card Number", "Amount Entry Field", "REF", "SEQUENCE NO", 
     "RECEIPT", "OPCODE", "AMOUNT", "BILL COUNT", "PHONE NO", "FROM ACCOUNT", "WITHDRAWAL AMOUNT",
- "BusinessService", "F_CASHDOOR", "FeelViewThread",
+ "BusinessService", "F_CASHDOOR", "[FeelViewThread]",
  "TRACK2", "TRACK 2", "PAN", "CARD EXPIRY", "APPROVAL CODE", "STAN", "RRN", "AUTH CODE", 
 "TRACE", "REFERENCE NUMBER", "TRANSACTION ID", "BALANCE", "CURRENCY", "SEQUENCE", "1000B", "1000A", "0500", "00100", "S0_I1", "S0_I0",]
     has_error_signal = any(word in line_upper for word in ERROR_KEYWORDS)
