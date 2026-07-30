@@ -41178,7 +41178,8 @@ def search_technician(query):
         "ตะวันออก": "east",
         "อีสต์": "east",
     }
-all_zone_commands = {
+
+    all_zone_commands = {
         "ทุกโซน",
         "โซนทั้งหมด",
         "แสดงทุกโซน",
