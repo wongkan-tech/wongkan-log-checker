@@ -41154,6 +41154,34 @@ with st.expander("📞 เบอร์โทรช่าง — กดเพื�
         {"Zone":"West","ชื่อ-สกุล":"วรวุฒิ ดีแจ่ม","จังหวัด":"เพชรบุรี","เบอร์โทร":"063-942-6306"},
         {"Zone":"West","ชื่อ-สกุล":"อัฐพงษ์ ศักดินันท์","จังหวัด":"ประจวบฯ","เบอร์โทร":"064-938-9552"},
     ]
+def search_technician(query):
+    query = query.lower().strip()
+
+    result = []
+
+    for tech in technician_data:
+        if (
+            query in tech["Zone"].lower()
+            or query in tech["ชื่อ-สกุล"].lower()
+            or query in tech["จังหวัด"].lower()
+        ):
+            result.append(tech)
+
+    if not result:
+        return None
+
+    text = f"พบช่าง {len(result)} คน\n\n"
+
+    for i, tech in enumerate(result, 1):
+        text += (
+            f"{i}. {tech['ชื่อ-สกุล']}\n"
+            f"   Zone : {tech['Zone']}\n"
+            f"   จังหวัด : {tech['จังหวัด']}\n"
+            f"   โทร : {tech['เบอร์โทร']}\n\n"
+        )
+
+    return text
+        
 
     technician_df = pd.DataFrame(technician_data)
 
@@ -41403,6 +41431,20 @@ elif use_uploaded_log and uploaded_log_text.strip():
 
 if prompt:
 
+    tech_result = search_technician(prompt)
+
+    if tech_result:
+        with st.chat_message("assistant"):
+            st.markdown(tech_result)
+
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": tech_result
+            }
+        )
+
+        st.stop()
     st.session_state.current_prompt = prompt
 
     st.session_state.messages.append(
