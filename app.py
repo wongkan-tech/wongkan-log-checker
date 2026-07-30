@@ -40852,6 +40852,7 @@ def search_technician(query):
 # ==========================================
 # Keyword Database
 # ==========================================
+keyword_db = {
            "MASTERBAAC": "📊 ข้อมูลระบบตู้ธนาคาร ธ.ก.ส. (BAAC):\n- ATM (Win10): MasterV2.0-A.GHO | Patch: B73 | Firmware: Version A4 (572 Unit)\n- ATM (Win11): MasterV2.0-B.GHO | Patch: DipChip_B38+ | Firmware: Version A4 (587 Unit)\n- ATN (Win11): MasterV2.0-C.GHO | Patch: DipChip_B38+ | Firmware: Version A4 (362 Unit)",
 
            "MASTERGSB": "📊 ข้อมูลระบบตู้ธนาคารออมสิน (GSB):\n- ADM: Master2.9_20250118 | Patch: BJ04_B630 | Firmware: UNV V28016BJ04 (12,130 Unit)\n- ATM: Master1.8_20250127 | Patch: B66_CardLess_20260120 | Firmware: Version 65 (450 Unit)",
