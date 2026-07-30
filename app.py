@@ -41154,6 +41154,8 @@ with st.expander("📞 เบอร์โทรช่าง — กดเพื�
         {"Zone":"West","ชื่อ-สกุล":"วรวุฒิ ดีแจ่ม","จังหวัด":"เพชรบุรี","เบอร์โทร":"063-942-6306"},
         {"Zone":"West","ชื่อ-สกุล":"อัฐพงษ์ ศักดินันท์","จังหวัด":"ประจวบฯ","เบอร์โทร":"064-938-9552"},
     ]
+    technician_df = pd.DataFrame(technician_data)
+    st.dataframe(technician_df, use_container_width=True, hide_index=True)
 def search_technician(query):
     query = query.lower().strip()
 
