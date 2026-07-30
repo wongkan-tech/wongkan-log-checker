@@ -41161,6 +41161,13 @@ def search_technician(query):
 
     zone_alias = {
         "บางนา": "bangna",
+        "ปิ่นเกล้า": "pinklao",
+        "หัวหมาก": "huamak",
+        "หลักสี่": "laksi",
+        "รังสิต": "rangsit",
+        "พระราม2": "rama2",
+        "สีลม1": "silom1",
+        "สีลม2": "silom2",
         "เซ็นเตอร์": "center",
         "กลาง": "center",
         "เหนือ": "north",
@@ -41171,6 +41178,35 @@ def search_technician(query):
         "ตะวันออก": "east",
         "อีสต์": "east",
     }
+     all_zone_commands = {
+        "ทุกโซน",
+        "โซนทั้งหมด",
+        "แสดงทุกโซน",
+        "รายชื่อทุกโซน",
+        "มีโซนอะไรบ้าง",
+    }
+
+    if query in all_zone_commands:
+        zones = sorted(
+            {
+                tech["Zone"].strip()
+                for tech in technician_data
+                if tech.get("Zone")
+            }
+        )
+
+        text = f"พบทั้งหมด {len(zones)} โซน\n\n"
+
+        for i, zone in enumerate(zones, 1):
+            technician_count = sum(
+                1
+                for tech in technician_data
+                if tech.get("Zone", "").strip().lower() == zone.lower()
+            )
+
+            text += f"{i}. {zone} — {technician_count} คน\n"
+
+        return text
 
     if query in zone_alias:
         query = zone_alias[query]
