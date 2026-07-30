@@ -41440,7 +41440,7 @@ if prompt:
 
 technician_result = None
 
-if any(k in prompt.lower() for k in phone_keywords):
+    if any(k in prompt.lower() for k in phone_keywords):
     technician_result = search_technician(prompt)
 
     if technician_result:
