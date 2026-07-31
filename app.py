@@ -40942,15 +40942,31 @@ def process_log_line(line):
     if "MAXIMUM RETRACT FAIL" in line_upper:
         return None, "retract_fail"
     
-    # คัดกรองข้อมูลธุรกรรมที่ไม่ใช่ Error แต่ไม่ตัด CARD/PRINTER แบบเหมารวม
-    # เพราะสองคำนี้อาจเป็นเหตุขัดข้องของอุปกรณ์จริง
-    noise_keywords = ["BILL", "*", "Terminal Id", "Card Number", "Amount Entry Field", "REF", "SEQUENCE NO", 
-    "RECEIPT", "OPCODE", "AMOUNT", "BILL COUNT", "PHONE NO", "FROM ACCOUNT", "WITHDRAWAL AMOUNT",
- "TRACK2", "TRACK 2", "PAN", "CARD EXPIRY", "APPROVAL CODE", "STAN", "RRN", "AUTH CODE", 
-"TRACE", "REFERENCE NUMBER", "TRANSACTION ID", "BALANCE", "CURRENCY", "SEQUENCE", "1000B", "1000A", "0500", "00100", "S0_I1", "S0_I0",]
-    has_error_signal = any(word in line_upper for word in ERROR_KEYWORDS)
-    if not has_error_signal and any(keyword in line_upper for keyword in noise_keywords):
-        return None, None
+    # คัดกรองข้อมูลธุรกรรม
+# เจอคำใน noise_keywords ให้ข้ามทันที แม้บรรทัดนั้นมี ERROR
+noise_keywords = [
+    "BILL", "*", "TERMINAL ID", "CARD NUMBER",
+    "AMOUNT ENTRY FIELD", "REF", "SEQUENCE NO",
+    "RECEIPT", "OPCODE", "AMOUNT", "BILL COUNT",
+    "PHONE NO", "FROM ACCOUNT", "WITHDRAWAL AMOUNT",
+    "TRACK2", "TRACK 2", "PAN", "CARD EXPIRY",
+    "APPROVAL CODE", "STAN", "RRN", "AUTH CODE",
+    "TRACE", "REFERENCE NUMBER", "TRANSACTION ID",
+    "BALANCE", "CURRENCY", "SEQUENCE",
+    "1000B", "1000A", "0500", "00100",
+    "S0_I1", "S0_I0"
+]
+
+if any(keyword in line_upper for keyword in noise_keywords):
+    return None, None
+
+has_error_signal = any(
+    word in line_upper for word in ERROR_KEYWORDS
+)
+
+is_matched = False
+detected_reason = ""
+solution_text = "No manual suggestion available for this specific keyword."
         
     is_matched = False
     detected_reason = ""
