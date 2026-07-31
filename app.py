@@ -1898,7 +1898,7 @@ def process_log_line(line):
         "S0_I1"
       ]
        # เจอคำข้าม ให้ข้ามทันที แม้บรรทัดนั้นมี ERROR
-       if any(
+    if any(
            keyword.upper() in line_upper
            for keyword in noise_keywords
        ):
