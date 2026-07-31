@@ -41488,6 +41488,30 @@ elif use_uploaded_log and uploaded_log_text.strip():
 
 if prompt:
 
+    # =========================================================
+# ค้นหาเบอร์ช่างเฉพาะเมื่อผู้ใช้ตั้งใจค้นหา
+# =========================================================
+
+technician_commands = [
+    "เบอร์ช่าง",
+    "เบอร์โทรช่าง",
+    "ค้นหาช่าง",
+    "รายชื่อช่าง",
+    "ช่างโซน",
+    "ช่างจังหวัด",
+    "ทุกโซน",
+    "โซนทั้งหมด",
+    "แสดงทุกโซน",
+    "รายชื่อทุกโซน",
+    "มีโซนอะไรบ้าง",
+]
+
+is_technician_query = any(
+    cmd in prompt.lower()
+    for cmd in technician_commands
+)
+
+if is_technician_query:
     tech_result = search_technician(prompt)
 
     if tech_result:
@@ -41497,7 +41521,7 @@ if prompt:
         st.session_state.messages.append(
             {
                 "role": "assistant",
-                "content": tech_result
+                "content": tech_result,
             }
         )
 
