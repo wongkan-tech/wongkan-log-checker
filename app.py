@@ -1829,122 +1829,234 @@ manual_db = {
 
 def process_log_line(line):
     line_upper = line.upper()
-    
+
     # 1. ตรวจจับ PAPER FAULT เฉพาะกรณีที่มีคำนี้จริง
     # ห้ามใช้เพียงคำว่า FAULT เพราะจะทำให้ Fault ของอุปกรณ์อื่นถูกระบุผิดเป็นกระดาษติด
     if "PAPER FAULT" in line_upper:
-        time_match = re.search(r"\d{2}:\d{2}:\d{2}(?:\.\d+)?", line)
-        log_time = time_match.group(0) if time_match else "Unknown Time"
+        time_match = re.search(
+            r"\d{2}:\d{2}:\d{2}(?:\.\d+)?",
+            line
+        )
+
+        log_time = (
+            time_match.group(0)
+            if time_match
+            else "Unknown Time"
+        )
+
         return {
             "time": log_time,
             "reason": "PAPER FAULT",
             "line": line.strip(),
             "solution": manual_db.get(
                 "PAPER FAULT",
-                "ตรวจสอบกระดาษ เครื่องพิมพ์ สาย USB/Communication และ Error Code ที่เกี่ยวข้อง"
+                "ตรวจสอบกระดาษ เครื่องพิมพ์ สาย USB/Communication "
+                "และ Error Code ที่เกี่ยวข้อง"
             )
         }, None
-           
-    # 2. ตรวจจับเรื่อง RECOVERY FAIL ของเดิมของคุณเป๊ะๆ
+
+    # 2. ตรวจจับ RECOVERY FAIL
     if "RECOVERY FAIL" in line_upper:
         return None, "recovery_fail"
 
-    # 3. ตรวจจับเรื่อง MAXIMUM RETRACT FAIL ของเดิมของคุณเป๊ะๆ
+    # 3. ตรวจจับ MAXIMUM RETRACT FAIL
     if "MAXIMUM RETRACT FAIL" in line_upper:
         return None, "retract_fail"
-    
-    # คัดกรองข้อมูลธุรกรรมที่ไม่ใช่ Error แต่ไม่ตัด CARD/PRINTER แบบเหมารวม
+
+    # คัดกรองข้อมูลธุรกรรมที่ไม่ใช่ Error
+    # ไม่ตัด CARD/PRINTER แบบเหมารวม
     # เพราะสองคำนี้อาจเป็นเหตุขัดข้องของอุปกรณ์จริง
-    noise_keywords = ["BILL", "*", "Terminal Id", "Card Number", "Amount Entry Field", "REF", "SEQUENCE NO", 
-    "RECEIPT", "OPCODE", "AMOUNT", "BILL COUNT", "PHONE NO", "FROM ACCOUNT", "WITHDRAWAL AMOUNT",
- "TRACK2", "TRACK 2", "PAN", "CARD EXPIRY", "APPROVAL CODE", "STAN", "RRN", "AUTH CODE", 
-"TRACE", "REFERENCE NUMBER", "TRANSACTION ID", "BALANCE", "CURRENCY", "SEQUENCE", "1000B", "1000A", "0500", "00100", "S0_I1", "S0_I0",]
-    has_error_signal = any(word in line_upper for word in ERROR_KEYWORDS)
-    if not has_error_signal and any(keyword in line_upper for keyword in noise_keywords):
+    noise_keywords = [
+        "BILL",
+        "*",
+        "TERMINAL ID",
+        "CARD NUMBER",
+        "AMOUNT ENTRY FIELD",
+        "REF",
+        "SEQUENCE NO",
+        "RECEIPT",
+        "OPCODE",
+        "AMOUNT",
+        "BILL COUNT",
+        "PHONE NO",
+        "FROM ACCOUNT",
+        "WITHDRAWAL AMOUNT",
+        "BUSINESSSERVICE",
+        "F_CASHDOOR",
+        "[FEELVIEWTHREAD]",
+        "TRACK2",
+        "TRACK 2",
+        "PAN",
+        "CARD EXPIRY",
+        "APPROVAL CODE",
+        "STAN",
+        "RRN",
+        "AUTH CODE",
+        "TRACE",
+        "REFERENCE NUMBER",
+        "TRANSACTION ID",
+        "BALANCE",
+        "CURRENCY",
+        "SEQUENCE",
+        "1000B",
+        "1000A",
+        "0500",
+        "00100",
+        "S0_I1"
+    ]
+
+    # เจอคำข้าม ให้ข้ามทันที แม้บรรทัดนั้นมี ERROR
+    if any(
+        keyword in line_upper
+        for keyword in noise_keywords
+    ):
         return None, None
-        
+
+    has_error_signal = any(
+        word in line_upper
+        for word in ERROR_KEYWORDS
+    )
+
     is_matched = False
     detected_reason = ""
-    solution_text = "No manual suggestion available for this specific keyword."
 
-    # 🎯 แก้ไขการดักจับเวลาในบรรทัดเพื่อพ่วงต่อ TIMESTAMP ป้องกันระบบค้าง
-    time_match = re.search(r'\d{2}:\d{2}:\d{2}(?:\.\d+)?', line)
-    log_time = time_match.group(0) if time_match else "Unknown Time"
+    solution_text = (
+        "No manual suggestion available "
+        "for this specific keyword."
+    )
 
-    # 🌟 [เพิ่มระบบดักจับตัวเลขข้ามเวลาตัวเก่งล่าสุด]: เช็กกลุ่มคำ Error/Failed ก่อนเป็นอันดับแรกสุดเพื่อล็อกความเสี่ยง
-    has_error_keyword = any(err_word in line_upper for err_word in ERROR_KEYWORDS)
-    
+    # ตรวจจับเวลาในบรรทัด
+    time_match = re.search(
+        r"\d{2}:\d{2}:\d{2}(?:\.\d+)?",
+        line
+    )
+
+    log_time = (
+        time_match.group(0)
+        if time_match
+        else "Unknown Time"
+    )
+
+    # ตรวจจับกลุ่มคำ Error/Failed ก่อน
+    has_error_keyword = any(
+        err_word in line_upper
+        for err_word in ERROR_KEYWORDS
+    )
+
     if has_error_keyword:
-        # สแกนหาชุดตัวเลขทั้งหมดในบรรทัด Log (ข้ามตัวเลขเวลา ย้อนไปคัดรหัสแท้)
+
+        # สแกนหาชุดตัวเลขทั้งหมดในบรรทัด Log
         numbers_found = CODE_PATTERN.findall(line)
+
         for code_str in numbers_found:
-            # ข้ามตัวเลขบอกเวลาสั้นๆ ทั่วไป
-            if len(code_str) < 3 and not code_str.startswith('-'):
+
+            # ข้ามตัวเลขสั้นทั่วไป
+            if len(code_str) < 3 and not code_str.startswith("-"):
                 continue
-                
-            # ตรวจสอบเช็กคู่มือใน manual_db (แบบ String)
+
+            # ตรวจสอบใน manual_db แบบ String
             if code_str in manual_db:
                 is_matched = True
                 detected_reason = code_str
                 solution_text = manual_db[code_str]
                 break
-                
-            # ตรวจสอบเช็กคู่มือใน manual_db (แบบ Integer เผื่อไว้)
+
+            # ตรวจสอบใน manual_db แบบ Integer
             try:
-                if int(code_str) in manual_db:
+                code_int = int(code_str)
+
+                if code_int in manual_db:
                     is_matched = True
                     detected_reason = code_str
-                    solution_text = manual_db[int(code_str)]
+                    solution_text = manual_db[code_int]
                     break
+
             except ValueError:
                 pass
 
-    # 1. ของเดิมของคุณ: หากระบบกลุ่ม Error ด้านบนไม่ทำงานหรือหาโค้ดไม่เจอ ให้วิ่งเช็กตามระบบ Keywords หลักต่อ
+    # หากหาโค้ดไม่เจอ ให้วิ่งตรวจสอบ Keywords หลัก
     if not is_matched:
+
         for keyword in search_keywords:
-            clean_keyword = keyword.replace(r'\b', '').strip()
-            
-            # ถ้าเป็นคำสั้นพิเศษ บังคับตรวจสอบแบบคำโดดเดี่ยวๆ
+            clean_keyword = (
+                keyword
+                .replace(r"\b", "")
+                .strip()
+            )
+
+            # ถ้าเป็นคำสั้นพิเศษ ให้ตรวจเป็นคำโดดเดี่ยว
             if keyword in [r"\bNF\b", r"\bNT\b"]:
-                has_match = re.search(keyword, line_upper)
+                has_match = re.search(
+                    keyword,
+                    line_upper
+                )
             else:
-                has_match = clean_keyword in line_upper
+                has_match = (
+                    clean_keyword in line_upper
+                )
 
             if has_match:
                 is_matched = True
                 detected_reason = clean_keyword
+
                 # ดึงคำแปลจากคลังข้อมูล
                 if clean_keyword in manual_db:
                     solution_text = manual_db[clean_keyword]
+
                 elif clean_keyword == "-14":
-                    solution_text = "Note jam flag is active."
+                    solution_text = (
+                        "Note jam flag is active."
+                    )
+
                 elif "NETWORK" in clean_keyword:
-                    solution_text = "Network lost or disconnected."
+                    solution_text = (
+                        "Network lost or disconnected."
+                    )
+
                 break
 
-    # 2. ของเดิมของคุณ: ตรวจเช็กจากระบบ Regex ตัวเลขสล๊อตสำรองกรณีคำหลุด
+    # ตรวจเช็ก Regex ตัวเลขสำรอง
     if not is_matched:
-        all_digit_groups = re.findall(r'\b\d+\b', line_upper)
-        negative_codes = re.findall(r'-\d{3}\b', line_upper)
-        
+
+        all_digit_groups = re.findall(
+            r"\b\d+\b",
+            line_upper
+        )
+
+        negative_codes = re.findall(
+            r"-\d{3}\b",
+            line_upper
+        )
+
+        # ตรวจสอบรหัสติดลบ
         for neg_code in negative_codes:
+
             if neg_code in manual_db:
                 is_matched = True
                 detected_reason = neg_code
                 solution_text = manual_db[neg_code]
                 break
+
             else:
                 is_matched = True
                 detected_reason = neg_code
-                solution_text = f"พบรหัสติดลบระบบ {neg_code}"
+                solution_text = (
+                    f"พบรหัสติดลบระบบ {neg_code}"
+                )
                 break
 
+        # ตรวจสอบรหัสตัวเลข 4 หรือ 5 หลัก
         if not is_matched:
+
             for num_group in all_digit_groups:
-                if len(num_group) == 4 or len(num_group) == 5:
+
+                if len(num_group) in (4, 5):
+
                     if num_group in manual_db:
                         is_matched = True
-                        detected_reason = f"Error Code {num_group}"
+                        detected_reason = (
+                            f"Error Code {num_group}"
+                        )
                         solution_text = manual_db[num_group]
                         break
 
@@ -1955,40 +2067,66 @@ def process_log_line(line):
             "reason": detected_reason,
             "solution": solution_text
         }, None
-        
+
     return None, None
 
+
 def decode_uploaded_bytes(raw_bytes):
-    """ถอดรหัสไฟล์ Log โดยรองรับ UTF-8 และภาษาไทยจากระบบ Windows"""
-    for encoding in ("utf-8-sig", "utf-8", "cp874", "tis-620", "latin-1"):
+    """
+    ถอดรหัสไฟล์ Log โดยรองรับ UTF-8
+    และภาษาไทยจากระบบ Windows
+    """
+
+    for encoding in (
+        "utf-8-sig",
+        "utf-8",
+        "cp874",
+        "tis-620",
+        "latin-1"
+    ):
         try:
             return raw_bytes.decode(encoding)
+
         except UnicodeDecodeError:
             continue
-    return raw_bytes.decode("utf-8", errors="replace")
+
+    return raw_bytes.decode(
+        "utf-8",
+        errors="replace"
+    )
 
 
-# --- ฟังก์ชันตัวช่วยวนลูปเนื้อหา Log เพื่อรวบรวมสถิติและผลลัพธ์ ของเดิมของคุณเป๊ะๆ ---
+# =========================================================================
+# ฟังก์ชันวนลูปเนื้อหา Log เพื่อรวบรวมสถิติและผลลัพธ์
+# =========================================================================
+
 def analyze_log_content(log_content, filename="File"):
     found_count = 0
     recovery_counter = 0
     retract_fail_counter = 0
     results_list = []
-    
+
     for line in log_content.splitlines():
-        if "MAXIMUM RETRACT FAIL TIMES" in line:
+
+        if "MAXIMUM RETRACT FAIL TIMES" in line.upper():
             retract_fail_counter += 1
-            
+
         res, event_type = process_log_line(line)
-        
+
         if event_type == "recovery_fail":
             recovery_counter += 1
+
         elif res:
             found_count += 1
             res["filename"] = filename
             results_list.append(res)
-            
-    return results_list, recovery_counter, retract_fail_counter, found_count
+
+    return (
+        results_list,
+        recovery_counter,
+        retract_fail_counter,
+        found_count
+    )
 
 
 # ================================================================
