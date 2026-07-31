@@ -1901,12 +1901,11 @@ def process_log_line(line):
     ]
 
     # เจอคำที่ต้องข้าม ให้ข้ามทันที
-    if "F_CASHDOOR_ERRORCODE" in line_upper:
-    return None, None
+    if "F_CASHDOOR_ERRORCODE" in line_upper: return None, None
         
     has_error_signal = any(
-    word.upper() in line_upper
-    for word in ERROR_KEYWORDS
+        word.upper() in line_upper
+        for word in ERROR_KEYWORDS
     )
 
     is_matched = False
