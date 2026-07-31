@@ -1853,9 +1853,10 @@ def process_log_line(line):
     if "MAXIMUM RETRACT FAIL" in line_upper:
         return None, "retract_fail"
     
+    # ==========================================================
     # คัดกรองข้อมูลธุรกรรมที่ไม่ใช่ Error
-    # ไม่ตัด CARD/PRINTER แบบเหมารวม
-    # เพราะสองคำนี้อาจเป็นเหตุขัดข้องของอุปกรณ์จริง
+    # ไม่ตัด CARD/PRINTER เพราะอาจเป็นปัญหาอุปกรณ์จริง
+    # ==========================================================
     noise_keywords = [
         "BILL",
         "*",
@@ -1864,7 +1865,7 @@ def process_log_line(line):
         "AMOUNT ENTRY FIELD",
         "REF",
         "SEQUENCE NO",
-        "FeelViewThread",
+        "FEELVIEWTHREAD",
         "RECEIPT",
         "OPCODE",
         "AMOUNT",
@@ -1872,10 +1873,10 @@ def process_log_line(line):
         "PHONE NO",
         "FROM ACCOUNT",
         "WITHDRAWAL AMOUNT",
-        "BusinessService",
+        "BUSINESSSERVICE",
         "{DEBUG}",
-        "[BusinessService]",
-        "CASHDOOR",
+        "[DEBUG]",
+        "F_CASHDOOR_ERRORCODE=[]",
         "[FEELVIEWTHREAD]",
         "TRACK2",
         "TRACK 2",
@@ -1895,27 +1896,28 @@ def process_log_line(line):
         "1000A",
         "0500",
         "00100",
-        "S0_I1"
-      ]
-       # เจอคำข้าม ให้ข้ามทันที แม้บรรทัดนั้นมี ERROR
+        "S0_I0",
+        "S0_I1",
+    ]
+
+    # เจอคำที่ต้องข้าม ให้ข้ามทันที
     if any(
-           keyword.upper() in line_upper
-           for keyword in noise_keywords
-       ):
-           return None, None
+        keyword.upper() in line_upper
+        for keyword in noise_keywords
+    ):
+        return None, None
 
-       has_error_signal = any(
-           word.upper() in line_upper
-           for word in ERROR_KEYWORDS
-       )
+    has_error_signal = any(
+        word.upper() in line_upper
+        for word in ERROR_KEYWORDS
+    )
 
-       is_matched = False
-       detected_reason = ""
-
-       solution_text = (
-           "No manual suggestion available "
-           "for this specific keyword."
-       )
+    is_matched = False
+    detected_reason = ""
+    solution_text = (
+        "No manual suggestion available "
+        "for this specific keyword."
+    )
 
     # 🎯 แก้ไขการดักจับเวลาในบรรทัดเพื่อพ่วงต่อ TIMESTAMP ป้องกันระบบค้าง
     time_match = re.search(r'\d{2}:\d{2}:\d{2}(?:\.\d+)?', line)
