@@ -1907,27 +1907,27 @@ def process_log_line(line):
         "00100",
         "S0_I1"
     ]
+       # เจอคำข้าม ให้ข้ามทันที แม้บรรทัดนั้นมี ERROR
+       if any(
+           keyword.upper() in line_upper
+           for keyword in noise_keywords
+       ):
+           return None, None
 
-    # เจอคำข้าม ให้ข้ามทันที แม้บรรทัดนั้นมี ERROR
-    if any(
-        keyword in line_upper
-        for keyword in noise_keywords
-    ):
-        return None, None
+       has_error_signal = any(
+           word.upper() in line_upper
+           for word in ERROR_KEYWORDS
+       )
 
-    has_error_signal = any(
-        word in line_upper
-        for word in ERROR_KEYWORDS
-    )
+       is_matched = False
+       detected_reason = ""
 
-    is_matched = False
-    detected_reason = ""
+       solution_text = (
+           "No manual suggestion available "
+           "for this specific keyword."
+       )
 
-    solution_text = (
-        "No manual suggestion available "
-        "for this specific keyword."
-    )
-
+    
     # ตรวจจับเวลาในบรรทัด
     time_match = re.search(
         r"\d{2}:\d{2}:\d{2}(?:\.\d+)?",
