@@ -41348,7 +41348,7 @@ if uploaded_image is not None:
                 image_response = client.chat.completions.create(
                     model=vision_model,
                     temperature=0.2,
-                    max_tokens=2000,
+                    max_tokens=10000,
                     messages=[
                         {
                             "role": "system",
@@ -41617,7 +41617,7 @@ if st.session_state.current_prompt:
 
                     temperature=0.2,
 
-                    max_tokens=2000,
+                    max_tokens=10000,
 
                     messages=[
 
